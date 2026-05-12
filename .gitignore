@@ -1,0 +1,11 @@
+*.env
+!configs/images/*.env
+*.qcow2
+*.raw
+*.img
+*.iso
+.cache/
+tmp/
+logs/*.log
+!logs/.gitkeep
+.ssh/
