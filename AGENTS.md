@@ -19,6 +19,27 @@
 - Do not add OpenTofu provisioning, Ansible configuration, workload VM definitions, production IPs, application config, Proxmox API tokens, or secret management here.
 - `scripts/build-proxmox-cloud-template.sh` is for the Proxmox node; local runs should use `make build TEMPLATE=...` or `scripts/remote-run-template-build.sh`.
 
+## Homelab Platform Context
+
+This repository is one part of a five-repository homelab platform:
+
+- `platform-template-builder`: builds reusable Proxmox VM templates from cloud images using SSH, `rsync`, and Proxmox `qm` commands.
+- `platform-infra`: provisions Proxmox VMs from those templates using OpenTofu and the Proxmox API.
+- `platform-config`: configures guest operating systems and services using Ansible over SSH.
+- `platform-k8s-bastion`: contains Kubernetes bastion tooling and operational helpers.
+- `platform-docs`: contains architecture notes, runbooks, diagrams, and operational decisions.
+
+The intended lifecycle is:
+
+1. Build base Proxmox templates in this repository.
+2. Provision VMs from templates in `platform-infra`.
+3. Generate or update Ansible inventory from infrastructure outputs.
+4. Configure VMs in `platform-config`.
+5. Use `platform-k8s-bastion` for Kubernetes operational access and helpers.
+6. Document design and operations in `platform-docs`.
+
+Keep responsibility boundaries strict. When a requested change starts to involve long-lived VM provisioning, OpenTofu resources, Ansible roles, Kubernetes operations, application configuration, production IPs, or secrets, do not add it here. Instead, identify the appropriate downstream repository.
+
 ## Highest-Value Sources
 
 - Start with `README.md`, `Makefile`, `docs/README.md`, and the relevant script in `scripts/`.
@@ -52,6 +73,6 @@
 
 ## Safety Rules
 
-- Never commit real `.env` files, SSH keys, Proxmox API tokens, downloaded images, or generated logs.
+- Commit only examples such as `.env.example`; never commit private SSH keys, Proxmox API tokens, CA private keys, real `.env` files, real `.tfvars`, Ansible Vault passwords, production inventories, downloaded images, or generated logs.
 - Cleanup and force-recreate paths must only destroy the configured `TEMPLATE_VMID`.
 - Preserve the separation between image profiles, local Proxmox template config, and downstream infrastructure/configuration repositories.
