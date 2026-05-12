@@ -10,6 +10,7 @@ Initial template IDs:
 9000 rocky-9-cloud-base
 9001 debian-12-cloud-base
 9002 ubuntu-24.04-cloud-base
+9003 rocky-10.1-cloud-base
 ```
 
 ## Template Rules

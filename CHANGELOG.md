@@ -5,6 +5,12 @@ All notable changes to `platform-template-builder` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Rocky 10.1 template example config and upstream image profile.
+
 ## [0.1.0] - 2026-05-12
 
 ### Added

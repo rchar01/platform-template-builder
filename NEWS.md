@@ -2,6 +2,10 @@
 
 This file gives a short, release-oriented view of what changed between versions.
 
+## Unreleased
+
+- Added Rocky 10.1 template configuration and image profile.
+
 ## v0.1.0 - 2026-05-12
 
 Initial release of `platform-template-builder`.

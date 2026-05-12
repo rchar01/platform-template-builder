@@ -15,9 +15,11 @@ Short descriptions of the repository files and documentation.
 ## Configs
 
 - `configs/rocky-9-cloud-base.env.example`: Rocky 9 template config example; copy to `configs/rocky-9-cloud-base.env` before building.
+- `configs/rocky-10.1-cloud-base.env.example`: Rocky 10.1 template config example; copy to `configs/rocky-10.1-cloud-base.env` before building.
 - `configs/debian-12-cloud-base.env.example`: Debian 12 template config example; copy to `configs/debian-12-cloud-base.env` before building.
 - `configs/ubuntu-24.04-cloud-base.env.example`: Ubuntu 24.04 template config example; copy to `configs/ubuntu-24.04-cloud-base.env` before building.
 - `configs/images/rocky-9.env`: Rocky 9 upstream image profile.
+- `configs/images/rocky-10.1.env`: Rocky 10.1 upstream image profile.
 - `configs/images/debian-12.env`: Debian 12 upstream image profile.
 - `configs/images/ubuntu-24.04.env`: Ubuntu 24.04 upstream image profile.
 

@@ -52,9 +52,10 @@ make validate TEMPLATE=rocky-9
 make build TEMPLATE=rocky-9
 ```
 
-Supported initial `TEMPLATE` values:
+Supported `TEMPLATE` values:
 
 - `rocky-9`
+- `rocky-10.1`
 - `debian-12`
 - `ubuntu-24.04`
 
