@@ -1,47 +1,29 @@
 # Documentation Index
 
-Short descriptions of the repository files and documentation.
+Use this page as a navigation index for the repository docs.
 
-## Root Files
+## Start Here
 
-- `README.md`: Quick start, requirements summary, usage, and links to detailed docs.
-- `AGENTS.md`: Repo-specific instructions for future OpenCode sessions.
-- `CHANGELOG.md`: Versioned list of notable changes.
-- `NEWS.md`: Short release-oriented summary for each version.
-- `Makefile`: Generic `check-tools`, `validate`, `build`, `cleanup`, `verify`, and `shellcheck` entry points.
-- `.gitignore`: Keeps private configs, downloaded images, logs, temporary files, and SSH material out of Git.
-- `.editorconfig`: Basic editor formatting defaults for shell scripts and Makefiles.
+- `../README.md`: Project overview, install, SSH bootstrap, quick start, configuration, and normal build commands.
+- `../Makefile`: Supported local entry points. Run `make help` to see them.
 
-## Configs
+## Docs In This Directory
 
-- `configs/rocky-9-cloud-base.env.example`: Rocky 9 template config example; copy to `configs/rocky-9-cloud-base.env` before building.
-- `configs/rocky-10.1-cloud-base.env.example`: Rocky 10.1 template config example; copy to `configs/rocky-10.1-cloud-base.env` before building.
-- `configs/debian-12-cloud-base.env.example`: Debian 12 template config example; copy to `configs/debian-12-cloud-base.env` before building.
-- `configs/ubuntu-24.04-cloud-base.env.example`: Ubuntu 24.04 template config example; copy to `configs/ubuntu-24.04-cloud-base.env` before building.
-- `configs/ssh/template-builder.env.example`: SSH bootstrap config example for Proxmox template-build access.
-- `configs/images/rocky-9.env`: Rocky 9 upstream image profile.
-- `configs/images/rocky-10.1.env`: Rocky 10.1 upstream image profile.
-- `configs/images/debian-12.env`: Debian 12 upstream image profile.
-- `configs/images/ubuntu-24.04.env`: Ubuntu 24.04 upstream image profile.
+- `proxmox-requirements.md`: Required access, SSH bootstrap, Proxmox tool checks, storage requirements, and bridge checks.
+- `template-conventions.md`: Template naming, VMID range, image profile rules, and default hardware conventions.
+- `troubleshooting.md`: Common failure modes, validation checks, and recovery steps.
+- `roadmap.md`: Improvements intentionally left out of the current version.
 
-## Scripts
+## Common Tasks
 
-- `scripts/validate-config.sh`: Validates a template config and its referenced image profile.
-- `scripts/init-proxmox-ssh.sh`: Creates a dedicated local SSH key/config snippet for Proxmox template-build access from a private SSH bootstrap config file.
-- `scripts/check-tools.sh`: Verifies required local tools and, when given a config, required tools on the configured Proxmox node.
-- `scripts/remote-run-template-build.sh`: Runs from the local machine, syncs files to Proxmox, executes the remote builder, and writes a local log.
-- `scripts/build-proxmox-cloud-template.sh`: Runs on the Proxmox node and creates the actual VM template with `qm` commands.
-- `scripts/cleanup-template-vm.sh`: Safely destroys only the configured VMID after explicit confirmation.
+- First-time setup: start with `../README.md`, then use `proxmox-requirements.md`.
+- Add or update a template: use `template-conventions.md`, then update the matching files under `../configs/`.
+- Debug a failed build: use `troubleshooting.md`.
+- Understand repository boundaries: read `../README.md` and `../AGENTS.md`.
 
-## Docs
+## Key Repo Paths
 
-- `docs/README.md`: This documentation index.
-- `docs/proxmox-requirements.md`: Required local and Proxmox access, tools, storage, bridge, and validation commands.
-- `docs/template-conventions.md`: Template naming, VMID range, image profile rules, and hardware defaults.
-- `docs/troubleshooting.md`: Common failure symptoms, checks, and fixes.
-- `docs/roadmap.md`: Future improvements intentionally left out of the first implementation.
-
-## Examples And Runtime Directories
-
-- `examples/ssh-config.example`: Generic SSH config example for the Proxmox host.
-- `logs/.gitkeep`: Keeps the log directory present while ignoring generated log files.
+- `../configs/*.env.example`: Private template config examples to copy locally.
+- `../configs/ssh/template-builder.env.example`: SSH bootstrap config example.
+- `../configs/images/*.env`: Committed upstream image profiles.
+- `../scripts/`: Executable implementation for validation, SSH bootstrap, remote build, and cleanup.
