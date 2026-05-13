@@ -15,7 +15,7 @@ The repositories are split by responsibility so that template building, infrastr
 | Repository | Purpose |
 |---|---|
 | [`platform-template-builder`](https://codeberg.org/rch/platform-template-builder.git) | Builds reusable Proxmox VM templates from cloud images. |
-| [`platform-infra`](TODO_URL) | Provisions platform infrastructure with OpenTofu. |
+| [`platform-infra`](https://codeberg.org/rch/platform-infra.git) | Provisions platform infrastructure with OpenTofu. |
 | [`platform-config`](TODO_URL) | Configures operating systems and services with Ansible. |
 | [`platform-k8s-bastion`](TODO_URL) | Contains Kubernetes bastion tooling and operational helpers. |
 | [`platform-docs`](TODO_URL) | Contains architecture notes, runbooks, diagrams, and operational documentation. |
