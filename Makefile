@@ -3,10 +3,11 @@ SHELL := /bin/sh
 
 TEMPLATE ?= rocky-9
 CONFIG ?= configs/$(TEMPLATE)-cloud-base.env
+SSH_CONFIG ?= configs/ssh/template-builder.env
 
-.PHONY: help verify syntax shellcheck check-tools \
+.PHONY: help verify syntax shellcheck init-ssh check-tools \
 	validate build cleanup \
-	check-config
+	check-config check-ssh-config
 
 ## Show available commands
 help:
@@ -35,6 +36,10 @@ shellcheck:
 ## Run local verification checks
 verify: syntax
 
+## Initialize local SSH key/config for Proxmox template builds
+init-ssh: check-ssh-config
+	./scripts/init-proxmox-ssh.sh "$(SSH_CONFIG)" $(if $(SSH_EMPTY_PASSPHRASE),--empty-passphrase) $(if $(SSH_WRITE_CONFIG),--write-config) $(if $(SSH_TEST),--test)
+
 ## Check required local tools, and remote tools if config exists
 check-tools:
 	@if [ -f "$(CONFIG)" ]; then \
@@ -59,3 +64,6 @@ cleanup: check-config
 
 check-config:
 	@test -f "$(CONFIG)" || { printf '%s\n' "Missing $(CONFIG). Run: cp configs/$(TEMPLATE)-cloud-base.env.example $(CONFIG)" >&2; exit 1; }
+
+check-ssh-config:
+	@test -f "$(SSH_CONFIG)" || { printf '%s\n' "Missing $(SSH_CONFIG). Run: cp configs/ssh/template-builder.env.example $(SSH_CONFIG)" >&2; exit 1; }

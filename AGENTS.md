@@ -44,11 +44,12 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 
 - Start with `README.md`, `Makefile`, `docs/README.md`, and the relevant script in `scripts/`.
 - Use `docs/proxmox-requirements.md` for tool/access requirements, `docs/template-conventions.md` for template/image-profile rules, and `docs/troubleshooting.md` for failure handling.
-- Trust executable sources (`Makefile`, `scripts/*.sh`, `configs/*.env.example`, `configs/images/*.env`) over prose if they conflict; update docs to match verified behavior.
+- Trust executable sources (`Makefile`, `scripts/*.sh`, `configs/*.env.example`, `configs/ssh/*.env.example`, `configs/images/*.env`) over prose if they conflict; update docs to match verified behavior.
 
 ## Commands Agents Should Not Guess
 
 - Show supported targets: `make help`.
+- Initialize local SSH key/config helper: `make init-ssh SSH_CONFIG=configs/ssh/template-builder.env`.
 - Check local tools, and remote tools if the private config exists: `make check-tools TEMPLATE=rocky-9`.
 - Validate a private config: `make validate TEMPLATE=rocky-9`.
 - Build remotely through SSH/rsync: `make build TEMPLATE=rocky-9`.
@@ -61,7 +62,9 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 
 - Keep Make targets generic; do not re-add OS-specific convenience targets like `build-rocky-9`.
 - `TEMPLATE ?= rocky-9` resolves to `CONFIG ?= configs/$(TEMPLATE)-cloud-base.env`.
+- `SSH_CONFIG ?= configs/ssh/template-builder.env` resolves the private SSH bootstrap config for `make init-ssh`.
 - Private `configs/*-cloud-base.env` files are ignored and must not be committed.
+- Private `configs/ssh/*.env` files are ignored and must not be committed.
 - Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`.
 - If adding a new template, add both `configs/<template>-cloud-base.env.example` and `configs/images/<template>.env`, then update `README.md`, `docs/README.md`, and `docs/template-conventions.md`.
 

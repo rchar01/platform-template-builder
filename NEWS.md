@@ -5,6 +5,7 @@ This file gives a short, release-oriented view of what changed between versions.
 ## Unreleased
 
 - Added Rocky 10.1 template configuration and image profile.
+- Added a local SSH bootstrap helper with a dedicated private config file for Proxmox template-build access.
 
 ## v0.1.0 - 2026-05-12
 

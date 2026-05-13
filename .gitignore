@@ -1,11 +1,21 @@
+# Ignore private local config files such as template configs and SSH bootstrap configs.
+# Example files remain trackable because `.env.example` does not match `*.env`.
 *.env
+
+# Keep committed upstream image metadata profiles under version control.
 !configs/images/*.env
+
+# Ignore downloaded image artifacts.
 *.qcow2
 *.raw
 *.img
 *.iso
+
+# Ignore generated caches, temporary files, and logs.
 .cache/
 tmp/
 logs/*.log
 !logs/.gitkeep
+
+# Ignore local SSH material stored in the workspace.
 .ssh/

@@ -59,6 +59,28 @@ Supported `TEMPLATE` values:
 - `debian-12`
 - `ubuntu-24.04`
 
+## SSH Bootstrap
+
+Template builds use SSH and `rsync` from this workstation to the Proxmox node. You can initialize a dedicated local SSH key and config snippet for template-building access:
+
+```bash
+cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
+# edit configs/ssh/template-builder.env
+make init-ssh
+```
+
+The helper loads a private SSH bootstrap config from `configs/ssh/template-builder.env`, creates an ed25519 key at `~/.ssh/platform-template-builder_ed25519` if it does not already exist, prints an SSH config block, and prints the `ssh-copy-id` command needed to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. It does not install keys on Proxmox, create users, create API tokens, or write to `~/.ssh/config` unless explicitly requested.
+
+To append the generated host block to `~/.ssh/config` and test access after installing the public key:
+
+```bash
+make init-ssh SSH_WRITE_CONFIG=1
+ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@192.168.1.10
+make init-ssh SSH_TEST=1
+```
+
+Set `PROXMOX_HOST="pve-template-builder"` in your private template config when using the generated alias.
+
 ## Requirements
 
 Local machine:
@@ -66,6 +88,7 @@ Local machine:
 - Bash
 - Make
 - SSH client with key access to the Proxmox node
+- `ssh-keygen` when using `make init-ssh`
 - `rsync`
 - standard Unix tools such as `awk`, `date`, `basename`, `mkdir`, and `tee`
 
@@ -89,6 +112,8 @@ cp configs/rocky-9-cloud-base.env.example configs/rocky-9-cloud-base.env
 ```
 
 Private `.env` files are ignored and must not be committed.
+
+SSH bootstrap uses a separate private config copied from `configs/ssh/template-builder.env.example` to `configs/ssh/template-builder.env`.
 
 Template configs reference committed image profiles under `configs/images/`:
 

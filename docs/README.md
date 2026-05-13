@@ -18,6 +18,7 @@ Short descriptions of the repository files and documentation.
 - `configs/rocky-10.1-cloud-base.env.example`: Rocky 10.1 template config example; copy to `configs/rocky-10.1-cloud-base.env` before building.
 - `configs/debian-12-cloud-base.env.example`: Debian 12 template config example; copy to `configs/debian-12-cloud-base.env` before building.
 - `configs/ubuntu-24.04-cloud-base.env.example`: Ubuntu 24.04 template config example; copy to `configs/ubuntu-24.04-cloud-base.env` before building.
+- `configs/ssh/template-builder.env.example`: SSH bootstrap config example for Proxmox template-build access.
 - `configs/images/rocky-9.env`: Rocky 9 upstream image profile.
 - `configs/images/rocky-10.1.env`: Rocky 10.1 upstream image profile.
 - `configs/images/debian-12.env`: Debian 12 upstream image profile.
@@ -26,6 +27,7 @@ Short descriptions of the repository files and documentation.
 ## Scripts
 
 - `scripts/validate-config.sh`: Validates a template config and its referenced image profile.
+- `scripts/init-proxmox-ssh.sh`: Creates a dedicated local SSH key/config snippet for Proxmox template-build access from a private SSH bootstrap config file.
 - `scripts/check-tools.sh`: Verifies required local tools and, when given a config, required tools on the configured Proxmox node.
 - `scripts/remote-run-template-build.sh`: Runs from the local machine, syncs files to Proxmox, executes the remote builder, and writes a local log.
 - `scripts/build-proxmox-cloud-template.sh`: Runs on the Proxmox node and creates the actual VM template with `qm` commands.
