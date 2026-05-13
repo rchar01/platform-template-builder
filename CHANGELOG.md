@@ -11,6 +11,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Rocky 10.1 template example config and upstream image profile.
 - Local Proxmox SSH bootstrap helper with a dedicated private config file for template-builder SSH keys and config snippets.
+- Template config reference documentation that maps private config variables to Proxmox discovery commands.
 
 ## [0.1.0] - 2026-05-12
 

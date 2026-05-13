@@ -83,12 +83,14 @@ PROXMOX_HOST="pve-template-builder"
 Run these from the local machine:
 
 ```bash
-ssh pve01 'qm list'
-ssh pve01 'pvesm status'
-ssh pve01 'ip link show type bridge'
-ssh pve01 'command -v rsync'
-ssh pve01 'command -v curl || command -v wget'
+ssh pve-template-builder 'qm list'
+ssh pve-template-builder 'pvesm status'
+ssh pve-template-builder 'ip link show type bridge'
+ssh pve-template-builder 'command -v rsync'
+ssh pve-template-builder 'command -v curl || command -v wget'
 ```
+
+For mapping `pvesm`, `qm`, and bridge output to template config variables, see `template-config-reference.md`.
 
 You can also run the project tool check locally:
 

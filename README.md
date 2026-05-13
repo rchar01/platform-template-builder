@@ -149,6 +149,8 @@ Private `.env` files are ignored and must not be committed.
 
 SSH bootstrap uses a separate private config copied from `configs/ssh/template-builder.env.example` to `configs/ssh/template-builder.env`.
 
+For a variable-by-variable guide to filling in private template configs, see `docs/template-config-reference.md`.
+
 Template configs reference committed image profiles under `configs/images/`:
 
 ```bash
@@ -205,6 +207,7 @@ Start with `docs/README.md` for the documentation index.
 Key docs:
 
 - `docs/proxmox-requirements.md`
+- `docs/template-config-reference.md`
 - `docs/template-conventions.md`
 - `docs/troubleshooting.md`
 - `docs/roadmap.md`

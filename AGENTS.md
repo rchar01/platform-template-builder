@@ -43,7 +43,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 ## Highest-Value Sources
 
 - Start with `README.md`, `Makefile`, `docs/README.md`, and the relevant script in `scripts/`.
-- Use `docs/proxmox-requirements.md` for tool/access requirements, `docs/template-conventions.md` for template/image-profile rules, and `docs/troubleshooting.md` for failure handling.
+- Use `docs/proxmox-requirements.md` for tool/access requirements, `docs/template-config-reference.md` for config variable discovery, `docs/template-conventions.md` for template/image-profile rules, and `docs/troubleshooting.md` for failure handling.
 - Trust executable sources (`Makefile`, `scripts/*.sh`, `configs/*.env.example`, `configs/ssh/*.env.example`, `configs/images/*.env`) over prose if they conflict; update docs to match verified behavior.
 
 ## Commands Agents Should Not Guess

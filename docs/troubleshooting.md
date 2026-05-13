@@ -2,14 +2,14 @@
 
 ## SSH Fails
 
-Symptom: `ssh pve01` fails or prompts for an unexpected password.
+Symptom: `ssh pve-template-builder` fails or prompts for an unexpected password.
 
 Likely cause: SSH config, hostname, user, or key is incorrect.
 
 Check:
 
 ```bash
-ssh -v pve01 'qm list'
+ssh -v pve-template-builder 'qm list'
 ```
 
 Fix: Update your local SSH config and verify key-based access outside this project.
@@ -23,7 +23,7 @@ Likely cause: The build script is not running on a Proxmox node.
 Check:
 
 ```bash
-ssh pve01 'command -v qm && test -d /etc/pve'
+ssh pve-template-builder 'command -v qm && test -d /etc/pve'
 ```
 
 Fix: Run builds through `make build TEMPLATE=rocky-9` so the remote Proxmox node executes the builder.
@@ -52,7 +52,7 @@ Likely cause: `DISK_STORAGE` or `CLOUDINIT_STORAGE` does not match the Proxmox s
 Check:
 
 ```bash
-ssh pve01 'pvesm status'
+ssh pve-template-builder 'pvesm status'
 ```
 
 Fix: Update the config with storage names from `pvesm status`.
@@ -66,7 +66,7 @@ Likely cause: `BRIDGE` does not match a Proxmox network bridge.
 Check:
 
 ```bash
-ssh pve01 'ip link show type bridge'
+ssh pve-template-builder 'ip link show type bridge'
 ```
 
 Fix: Update `BRIDGE` in the config.
@@ -80,7 +80,7 @@ Likely cause: The VMID is already assigned to a VM or template.
 Check:
 
 ```bash
-ssh pve01 'qm status 9000 || true; qm config 9000'
+ssh pve-template-builder 'qm status 9000 || true; qm config 9000'
 ```
 
 Fix: Use a different `TEMPLATE_VMID`, or set `FORCE_RECREATE=true` only after verifying the existing VMID can be destroyed.
@@ -94,7 +94,7 @@ Likely cause: The Proxmox node cannot reach the image URL, DNS is unavailable, o
 Check:
 
 ```bash
-ssh pve01 'curl -I https://download.rockylinux.org/'
+ssh pve-template-builder 'curl -I https://download.rockylinux.org/'
 ```
 
 Fix: Restore network access, update `IMAGE_URL`, or pre-cache the image under `.cache/images/` on the remote build directory.
@@ -108,7 +108,7 @@ Likely cause: Proxmox produced an unexpected disk reference or import did not up
 Check:
 
 ```bash
-ssh pve01 'qm config 9000'
+ssh pve-template-builder 'qm config 9000'
 ```
 
 Fix: Inspect the `unusedX` disk entry and attach it manually if needed, then update the script based on the observed output.
@@ -122,7 +122,7 @@ Likely cause: Wrong bridge, missing cloud-init network configuration in the prov
 Check:
 
 ```bash
-ssh pve01 'qm config 9000 | grep net0'
+ssh pve-template-builder 'qm config 9000 | grep net0'
 ```
 
 Fix: Verify the bridge on the template and apply clone-specific network config from infrastructure/cloud-init.
@@ -136,7 +136,7 @@ Likely cause: Cloud-init drive missing, cloned VM not configured with cloud-init
 Check:
 
 ```bash
-ssh pve01 'qm config 9000 | grep ide2'
+ssh pve-template-builder 'qm config 9000 | grep ide2'
 ```
 
 Fix: Ensure the template has `ide2: <storage>:cloudinit` and set clone-specific cloud-init values in the infrastructure repository.
@@ -150,7 +150,7 @@ Likely cause: The template enables the Proxmox agent flag, but the guest image m
 Check:
 
 ```bash
-ssh pve01 'qm config 9000 | grep agent'
+ssh pve-template-builder 'qm config 9000 | grep agent'
 ```
 
 Fix: Install and enable the guest agent later through the configuration repository if the image does not include it.

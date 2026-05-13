@@ -10,6 +10,7 @@ Use this page as a navigation index for the repository docs.
 ## Docs In This Directory
 
 - `proxmox-requirements.md`: Required access, SSH bootstrap, Proxmox tool checks, storage requirements, and bridge checks.
+- `template-config-reference.md`: Maps template config variables to Proxmox discovery commands and recommended values.
 - `template-conventions.md`: Template naming, VMID range, image profile rules, and default hardware conventions.
 - `troubleshooting.md`: Common failure modes, validation checks, and recovery steps.
 - `roadmap.md`: Improvements intentionally left out of the current version.
@@ -17,6 +18,7 @@ Use this page as a navigation index for the repository docs.
 ## Common Tasks
 
 - First-time setup: start with `../README.md`, then use `proxmox-requirements.md`.
+- Fill in a private template config: use `template-config-reference.md`.
 - Add or update a template: use `template-conventions.md`, then update the matching files under `../configs/`.
 - Debug a failed build: use `troubleshooting.md`.
 - Understand repository boundaries: read `../README.md` and `../AGENTS.md`.
