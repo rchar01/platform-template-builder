@@ -7,11 +7,22 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-13
+
 ### Added
 
 - Rocky 10.1 template example config and upstream image profile.
 - Local Proxmox SSH bootstrap helper with a dedicated private config file for template-builder SSH keys and config snippets.
 - Template config reference documentation that maps private config variables to Proxmox discovery commands.
+- Platform project context documenting the relationship to `platform-infra`, `platform-config`, `platform-k8s-bastion`, and `platform-docs`.
+- Install instructions for cloning the repository from Codeberg.
+- Documentation for installing Proxmox SSH public keys through `ssh-copy-id` or manual `authorized_keys` setup.
+
+### Changed
+
+- Standardized documented SSH examples and committed template examples on the `pve-template-builder` alias.
+- Reworked `docs/README.md` into a concise documentation index.
+- Clarified `.gitignore` intent for private `.env` configs, image profiles, generated artifacts, and local SSH material.
 
 ## [0.1.0] - 2026-05-12
 

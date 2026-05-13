@@ -4,9 +4,21 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
-- Added Rocky 10.1 template configuration and image profile.
+No unreleased changes.
+
+## v1.0.0 - 2026-05-13
+
+Stable release of the Proxmox template-builder workflow after validating the real SSH and config-discovery path.
+
+Highlights:
+
+- Added Rocky 10.1 template configuration and image profile using the upstream GenericCloud LVM image.
 - Added a local SSH bootstrap helper with a dedicated private config file for Proxmox template-build access.
 - Added template config reference documentation for discovering Proxmox-derived values.
+- Documented public-key installation through `ssh-copy-id` and manual Proxmox `authorized_keys` setup.
+- Standardized examples and docs on the `pve-template-builder` SSH alias.
+- Reworked `docs/README.md` into a concise documentation index.
+- Added platform project context and Codeberg install instructions.
 
 ## v0.1.0 - 2026-05-12
 
