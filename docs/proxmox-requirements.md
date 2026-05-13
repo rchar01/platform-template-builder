@@ -30,10 +30,46 @@ make init-ssh
 
 The helper loads `configs/ssh/template-builder.env`, creates a dedicated ed25519 key under `~/.ssh/` if missing, prints an SSH config block, and prints the `ssh-copy-id` command to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. The helper does not install the key automatically, create Proxmox users, create API tokens, or write to `~/.ssh/config` unless `SSH_WRITE_CONFIG=1` is set.
 
-After installing the public key, test the alias:
+To create the SSH key without a passphrase:
 
 ```bash
+make init-ssh SSH_EMPTY_PASSPHRASE=1
+```
+
+Use this only if you intentionally want an unencrypted local private key.
+
+To install the public key on Proxmox when password SSH login already works:
+
+```bash
+ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@192.168.1.10
+```
+
+If password SSH login does not work yet, use the Proxmox console or web shell and install the public key manually. First show the public key on this workstation:
+
+```bash
+cat ~/.ssh/platform-template-builder_ed25519.pub
+```
+
+Then on the Proxmox node:
+
+```bash
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+cat >> /root/.ssh/authorized_keys
+```
+
+Paste the public key, press `Ctrl-D`, then run:
+
+```bash
+chmod 600 /root/.ssh/authorized_keys
+```
+
+After installing the public key, write the SSH alias to `~/.ssh/config` and test it:
+
+```bash
+make init-ssh SSH_WRITE_CONFIG=1
 make init-ssh SSH_TEST=1
+ssh pve-template-builder 'hostname && qm list && pvesm status'
 ```
 
 Use the resulting alias in private template configs:
