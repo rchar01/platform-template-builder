@@ -43,23 +43,78 @@ cd platform-template-builder
 make help
 ```
 
-## Quick Start
-
-Create a private Rocky 9 config, edit it for your Proxmox host, then validate and build:
-
-```bash
-cp configs/rocky-9-cloud-base.env.example configs/rocky-9-cloud-base.env
-# edit configs/rocky-9-cloud-base.env for your Proxmox host/storage/bridge
-make validate TEMPLATE=rocky-9
-make build TEMPLATE=rocky-9
-```
-
 Supported `TEMPLATE` values:
 
 - `rocky-9`
 - `rocky-10.1`
 - `debian-12`
 - `ubuntu-24.04`
+
+## Workflows
+
+Use either the default local config workflow or a separate private config repository. The build behavior is the same; only the config location changes.
+
+### Default Local Config
+
+Use this flow for local experiments or a single workstation. Private `.env` files stay in this checkout and are ignored by Git.
+
+```bash
+git clone https://codeberg.org/rch/platform-template-builder
+cd platform-template-builder
+
+git clone https://codeberg.org/rch/platform-tools ../platform-tools
+make -C ../platform-tools install
+
+cp configs/rocky-10.1-cloud-base.env.example configs/rocky-10.1-cloud-base.env
+cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
+
+# edit both files for your Proxmox host, storage, bridge, and SSH alias
+make init-ssh
+make check-tools TEMPLATE=rocky-10.1
+make validate TEMPLATE=rocky-10.1
+make build TEMPLATE=rocky-10.1
+```
+
+If the generated public key is not already installed on Proxmox, follow the `ssh-copy-id` command printed by `make init-ssh`, then run `make init-ssh SSH_TEST=1` to verify access.
+
+### Separate Private Config Repo
+
+Use this flow for real homelab or production configs. Keep real `.env` files in a sibling private repository and point Make at that config root.
+
+Expected private layout:
+
+```text
+../platform-private/template-builder/configs/
+  rocky-10.1-cloud-base.env
+  ssh/template-builder.env
+```
+
+Run from the public `platform-template-builder` checkout:
+
+```bash
+git clone https://codeberg.org/rch/platform-template-builder
+cd platform-template-builder
+
+git clone https://codeberg.org/rch/platform-tools ../platform-tools
+make -C ../platform-tools install
+
+# clone or place your private config repo as ../platform-private
+# git clone <your-platform-private-url> ../platform-private
+
+# ensure ../platform-private/template-builder/configs exists with real values
+make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+```
+
+If you do not want to install `platform-tools`, run the helper from a sibling checkout:
+
+```bash
+make init-ssh \
+  PLATFORM_SSH_INIT=../platform-tools/bin/platform-ssh-init \
+  CONFIG_ROOT=../platform-private/template-builder/configs
+```
 
 ## SSH Bootstrap
 

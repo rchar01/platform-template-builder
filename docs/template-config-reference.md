@@ -8,9 +8,22 @@ For a normal first build, copy an example and edit only the Proxmox-specific val
 cp configs/rocky-10.1-cloud-base.env.example configs/rocky-10.1-cloud-base.env
 ```
 
-## Private Config Location
+## Running With Default Local Configs
 
-For local experiments, copying examples into this repository is acceptable because private `.env` files are ignored.
+Use this flow when private configs are stored under this checkout:
+
+```bash
+cp configs/rocky-10.1-cloud-base.env.example configs/rocky-10.1-cloud-base.env
+cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
+
+# edit both files for your Proxmox host, storage, bridge, and SSH alias
+make init-ssh
+make check-tools TEMPLATE=rocky-10.1
+make validate TEMPLATE=rocky-10.1
+make build TEMPLATE=rocky-10.1
+```
+
+## Running With Separate Private Config Repo
 
 For real homelab or production use, prefer storing private configs in `platform-private` and point Make at them with `CONFIG_ROOT` or `CONFIG`:
 
@@ -21,6 +34,10 @@ For real homelab or production use, prefer storing private configs in `platform-
 ```
 
 ```bash
+# clone or place your private config repo as ../platform-private
+# git clone <your-platform-private-url> ../platform-private
+
+make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
 make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
