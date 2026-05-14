@@ -7,6 +7,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-14
+
 ### Changed
 
 - Refactored `make init-ssh` to wrap the shared `platform-ssh-init` helper from `platform-tools`; template builds still require only working SSH access, not the helper.
