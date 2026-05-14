@@ -49,7 +49,7 @@ For real homelab use, the SSH bootstrap config may live in `platform-private` an
 make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
 ```
 
-The helper loads the configured SSH bootstrap file from `SSH_CONFIG`, which defaults to `$(CONFIG_ROOT)/ssh/template-builder.env`. It creates a dedicated ed25519 key at the configured `SSH_KEY_PATH` if missing, prints an SSH config block, and prints the `ssh-copy-id` command to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. The helper does not install the key automatically, create Proxmox users, create API tokens, or write to `~/.ssh/config` unless `SSH_WRITE_CONFIG=1` is set.
+The helper loads the configured SSH bootstrap file from `SSH_CONFIG`, which defaults to `$(CONFIG_ROOT)/ssh/template-builder.env`. It creates a dedicated ed25519 key at the configured `SSH_KEY_PATH` if missing, prints an SSH config block, and prints the `ssh-copy-id` command to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. The helper does not install the key automatically, create Proxmox users, create API tokens, or write to `~/.ssh/config` unless `SSH_WRITE_CONFIG=1` is set. Build automation reads this same file directly, so writing `~/.ssh/config` is optional.
 
 CI/CD should normally skip `make init-ssh`. Put the private key and SSH config in place through the CI secret system, then run `make check-tools TEMPLATE=...` to verify access.
 
@@ -87,7 +87,7 @@ Paste the public key, press `Ctrl-D`, then run:
 chmod 600 /root/.ssh/authorized_keys
 ```
 
-After installing the public key, write the SSH alias to `~/.ssh/config` and test it:
+After installing the public key, test direct access through `template-builder.env`; writing the SSH alias to `~/.ssh/config` is optional:
 
 ```bash
 make init-ssh SSH_WRITE_CONFIG=1

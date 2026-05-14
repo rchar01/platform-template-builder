@@ -54,6 +54,8 @@ Supported `TEMPLATE` values:
 
 Use either the default local config workflow or a separate private config repository. The build behavior is the same; only the config location changes.
 
+`make init-ssh` prints the SSH config block by default, but does not write it to `~/.ssh/config`. `make check-tools`, `make build`, and `make cleanup` use `SSH_CONFIG`, which defaults to `$(CONFIG_ROOT)/ssh/template-builder.env`, directly when that file exists. Add `SSH_WRITE_CONFIG=1` only when you also want the helper to append the `Host pve-template-builder` block to `~/.ssh/config`. Add `SSH_EMPTY_PASSPHRASE=1` only when you intentionally want an unencrypted local private key.
+
 ### Default Local Config
 
 Use this flow for local experiments or a single workstation. Private `.env` files stay in this checkout and are ignored by Git.
@@ -68,14 +70,19 @@ make -C ../platform-tools install
 cp configs/rocky-10.1-cloud-base.env.example configs/rocky-10.1-cloud-base.env
 cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
 
-# edit both files for your Proxmox host, storage, bridge, and SSH alias
+# edit both files for your Proxmox host, storage, bridge, SSH user, and key
 make init-ssh
+
+# run the ssh-copy-id command printed by make init-ssh, for example:
+ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@<proxmox-ip>
+make init-ssh SSH_TEST=1
+
 make check-tools TEMPLATE=rocky-10.1
 make validate TEMPLATE=rocky-10.1
 make build TEMPLATE=rocky-10.1
 ```
 
-If the generated public key is not already installed on Proxmox, follow the `ssh-copy-id` command printed by `make init-ssh`, then run `make init-ssh SSH_TEST=1` to verify access.
+If password SSH login is not available, use the manual `/root/.ssh/authorized_keys` fallback in `SSH Bootstrap`.
 
 ### Separate Private Config Repo
 
@@ -103,6 +110,11 @@ make -C ../platform-tools install
 
 # ensure ../platform-private/template-builder/configs exists with real values
 make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+
+# run the ssh-copy-id command printed by make init-ssh, for example:
+ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@<proxmox-ip>
+make init-ssh SSH_TEST=1 CONFIG_ROOT=../platform-private/template-builder/configs
+
 make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
@@ -143,7 +155,7 @@ If `platform-ssh-init` is not installed, run with an explicit path:
 make init-ssh PLATFORM_SSH_INIT=../platform-tools/bin/platform-ssh-init
 ```
 
-The helper loads the configured SSH bootstrap file from `SSH_CONFIG`, which defaults to `$(CONFIG_ROOT)/ssh/template-builder.env`. It creates an ed25519 key at the configured `SSH_KEY_PATH` if it does not already exist, prints an SSH config block, and prints the `ssh-copy-id` command needed to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. It does not install keys on Proxmox, create users, create API tokens, or write to `~/.ssh/config` unless explicitly requested.
+The helper loads the configured SSH bootstrap file from `SSH_CONFIG`, which defaults to `$(CONFIG_ROOT)/ssh/template-builder.env`. It creates an ed25519 key at the configured `SSH_KEY_PATH` if it does not already exist, prints an SSH config block, and prints the `ssh-copy-id` command needed to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. It does not install keys on Proxmox, create users, create API tokens, or write to `~/.ssh/config` unless explicitly requested. Build automation reads this same file directly, so writing `~/.ssh/config` is optional.
 
 To create the SSH key without a passphrase:
 
@@ -179,7 +191,7 @@ Paste the public key, press `Ctrl-D`, then run:
 chmod 600 /root/.ssh/authorized_keys
 ```
 
-To append the generated host block to `~/.ssh/config` and test access after installing the public key:
+To test access after installing the public key, and optionally append the generated host block to `~/.ssh/config`:
 
 ```bash
 make init-ssh SSH_WRITE_CONFIG=1
@@ -245,7 +257,7 @@ make build CONFIG=../platform-private/template-builder/configs/rocky-10.1-cloud-
 
 SSH bootstrap uses a separate private config copied from `configs/ssh/template-builder.env.example` to `$(CONFIG_ROOT)/ssh/template-builder.env`.
 
-The SSH bootstrap helper is optional. CI/CD or manually configured workstations only need the configured private key and SSH alias to exist before running `make check-tools` or `make build`.
+The SSH bootstrap helper is optional. CI/CD or manually configured workstations only need the configured private key and SSH transport values to exist before running `make check-tools` or `make build`.
 
 When using a private config root, the same root is used for SSH bootstrap:
 

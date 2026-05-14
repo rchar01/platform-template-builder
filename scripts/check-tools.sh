@@ -51,10 +51,10 @@ check_remote_command() {
   local command_name=$1
 
   # shellcheck disable=SC2029
-  if ssh "$PROXMOX_HOST" "command -v '${command_name}' >/dev/null 2>&1"; then
-    ok "Remote command available on ${PROXMOX_HOST}: ${command_name}"
+  if ssh_transport_ssh "command -v '${command_name}' >/dev/null 2>&1"; then
+    ok "Remote command available on ${SSH_TRANSPORT_DISPLAY}: ${command_name}"
   else
-    error "Remote command missing on ${PROXMOX_HOST}: ${command_name}"
+    error "Remote command missing on ${SSH_TRANSPORT_DISPLAY}: ${command_name}"
     MISSING=1
   fi
 }
@@ -74,20 +74,20 @@ check_remote_any() {
   done
 
   # shellcheck disable=SC2029
-  if ssh "$PROXMOX_HOST" "$remote_check"; then
-    ok "Remote command available for ${label} on ${PROXMOX_HOST}: $*"
+  if ssh_transport_ssh "$remote_check"; then
+    ok "Remote command available for ${label} on ${SSH_TRANSPORT_DISPLAY}: $*"
   else
-    error "No remote command available for ${label} on ${PROXMOX_HOST}: $*"
+    error "No remote command available for ${label} on ${SSH_TRANSPORT_DISPLAY}: $*"
     MISSING=1
   fi
 }
 
 check_remote_proxmox_marker() {
   # shellcheck disable=SC2029
-  if ssh "$PROXMOX_HOST" "test -d /etc/pve"; then
-    ok "Remote Proxmox marker found on ${PROXMOX_HOST}: /etc/pve"
+  if ssh_transport_ssh "test -d /etc/pve"; then
+    ok "Remote Proxmox marker found on ${SSH_TRANSPORT_DISPLAY}: /etc/pve"
   else
-    error "Remote Proxmox marker missing on ${PROXMOX_HOST}: /etc/pve"
+    error "Remote Proxmox marker missing on ${SSH_TRANSPORT_DISPLAY}: /etc/pve"
     MISSING=1
   fi
 }
@@ -99,6 +99,8 @@ fi
 
 SCRIPT_DIR=$(script_dir)
 ROOT_DIR=$(CDPATH='' cd -- "${SCRIPT_DIR}/.." && pwd)
+# shellcheck source=scripts/ssh-transport.sh
+. "${SCRIPT_DIR}/ssh-transport.sh"
 MISSING=0
 
 info "Checking local required tools"
@@ -114,6 +116,7 @@ local_required=(
   dirname
   grep
   mkdir
+  mktemp
   pwd
   sort
   tee
@@ -159,7 +162,20 @@ set -a
 . "$CONFIG_FILE"
 set +a
 
-info "Checking remote required tools on ${PROXMOX_HOST}"
+ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
+
+info "Checking SSH access to ${SSH_TRANSPORT_DISPLAY}"
+if ! ssh_transport_ssh 'true'; then
+  error "Cannot connect to Proxmox host ${PROXMOX_HOST}"
+  if [[ -n "${SSH_TRANSPORT_CONFIG_SOURCE:-}" ]]; then
+    error "SSH transport config was loaded from ${SSH_TRANSPORT_CONFIG_SOURCE}; check SSH_HOST, SSH_USER, SSH_KEY_PATH, and the remote authorized_keys file"
+  else
+    error "No SSH transport config was loaded; ensure ${PROXMOX_HOST} resolves through SSH config, DNS, or /etc/hosts"
+  fi
+  die "Remote SSH access check failed"
+fi
+
+info "Checking remote required tools on ${SSH_TRANSPORT_DISPLAY}"
 remote_required=(
   bash
   qm

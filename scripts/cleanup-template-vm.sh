@@ -43,6 +43,8 @@ fi
 CONFIG_FILE=$1
 SCRIPT_DIR=$(script_dir)
 ROOT_DIR=$(CDPATH='' cd -- "${SCRIPT_DIR}/.." && pwd)
+# shellcheck source=scripts/ssh-transport.sh
+. "${SCRIPT_DIR}/ssh-transport.sh"
 
 "${SCRIPT_DIR}/validate-config.sh" "$CONFIG_FILE"
 
@@ -62,15 +64,21 @@ set +a
 
 command_exists ssh || die "ssh is required"
 
-info "Checking VMID ${TEMPLATE_VMID} on ${PROXMOX_HOST}"
+ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
+
+info "Checking SSH access to ${SSH_TRANSPORT_DISPLAY}"
 # shellcheck disable=SC2029
-if ! ssh "$PROXMOX_HOST" "qm status '${TEMPLATE_VMID}' >/dev/null 2>&1"; then
-  die "VMID ${TEMPLATE_VMID} does not exist on ${PROXMOX_HOST}"
+ssh_transport_ssh 'true' || die "Cannot connect to Proxmox host ${PROXMOX_HOST}. Check TEMPLATE_BUILDER_SSH_CONFIG, SSH_HOST, SSH_USER, SSH_KEY_PATH, and the remote authorized_keys file."
+
+info "Checking VMID ${TEMPLATE_VMID} on ${SSH_TRANSPORT_DISPLAY}"
+# shellcheck disable=SC2029
+if ! ssh_transport_ssh "qm status '${TEMPLATE_VMID}' >/dev/null 2>&1"; then
+  die "VMID ${TEMPLATE_VMID} does not exist on ${SSH_TRANSPORT_DISPLAY}"
 fi
 
-warn "Target for cleanup: VMID ${TEMPLATE_VMID} (${TEMPLATE_NAME}) on ${PROXMOX_HOST}"
+warn "Target for cleanup: VMID ${TEMPLATE_VMID} (${TEMPLATE_NAME}) on ${SSH_TRANSPORT_DISPLAY}"
 # shellcheck disable=SC2029
-ssh "$PROXMOX_HOST" "qm config '${TEMPLATE_VMID}'"
+ssh_transport_ssh "qm config '${TEMPLATE_VMID}'"
 
 if [[ "${CLEANUP_ASSUME_YES:-false}" != "true" ]]; then
   printf 'Type VMID %s to destroy: ' "$TEMPLATE_VMID"
@@ -82,6 +90,6 @@ fi
 
 warn "Destroying only VMID ${TEMPLATE_VMID}"
 # shellcheck disable=SC2029
-ssh "$PROXMOX_HOST" "status=\$(qm status '${TEMPLATE_VMID}' | awk -F': ' '/status:/ { print \$2 }'); if [ \"\$status\" = 'running' ]; then qm shutdown '${TEMPLATE_VMID}' --timeout 60 || qm stop '${TEMPLATE_VMID}'; fi; qm destroy '${TEMPLATE_VMID}' --purge"
+ssh_transport_ssh "status=\$(qm status '${TEMPLATE_VMID}' | awk -F': ' '/status:/ { print \$2 }'); if [ \"\$status\" = 'running' ]; then qm shutdown '${TEMPLATE_VMID}' --timeout 60 || qm stop '${TEMPLATE_VMID}'; fi; qm destroy '${TEMPLATE_VMID}' --purge"
 
 ok "Destroyed VMID ${TEMPLATE_VMID}"

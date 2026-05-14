@@ -16,8 +16,13 @@ Use this flow when private configs are stored under this checkout:
 cp configs/rocky-10.1-cloud-base.env.example configs/rocky-10.1-cloud-base.env
 cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
 
-# edit both files for your Proxmox host, storage, bridge, and SSH alias
+# edit both files for your Proxmox host, storage, bridge, SSH user, and key
 make init-ssh
+
+# run the ssh-copy-id command printed by make init-ssh, for example:
+ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@<proxmox-ip>
+make init-ssh SSH_TEST=1
+
 make check-tools TEMPLATE=rocky-10.1
 make validate TEMPLATE=rocky-10.1
 make build TEMPLATE=rocky-10.1
@@ -38,6 +43,11 @@ For real homelab or production use, prefer storing private configs in `platform-
 # git clone <your-platform-private-url> ../platform-private
 
 make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+
+# run the ssh-copy-id command printed by make init-ssh, for example:
+ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@<proxmox-ip>
+make init-ssh SSH_TEST=1 CONFIG_ROOT=../platform-private/template-builder/configs
+
 make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
@@ -71,7 +81,7 @@ ssh pve-template-builder 'command -v curl || command -v wget'
 | `TEMPLATE_NAME` | Local convention | Use the example name unless adding a new template. See `template-conventions.md`. |
 | `TEMPLATE_VMID` | Local choice plus Proxmox check | Use `ssh pve-template-builder 'qm list'`; pick a free ID in the template range from `template-conventions.md`. |
 | `IMAGE_PROFILE` | Repo config | Use a committed file under `configs/images/`. |
-| `PROXMOX_HOST` | SSH setup | Use a working SSH alias or `user@host`; the optional SSH bootstrap config defaults to `pve-template-builder`. |
+| `PROXMOX_HOST` | SSH setup | Use a descriptive SSH label or reachable host. When `$(CONFIG_ROOT)/ssh/template-builder.env` exists, build automation uses that file's `SSH_HOST`, `SSH_USER`, and `SSH_KEY_PATH` directly. |
 | `PROXMOX_REMOTE_DIR` | Local choice on Proxmox node | Use a writable path on the Proxmox node. `/root/platform-template-builder` is suitable when using root SSH. |
 | `DISK_STORAGE` | Proxmox storage | Use `ssh pve-template-builder 'pvesm status'` and choose storage that can hold VM disks. |
 | `CLOUDINIT_STORAGE` | Proxmox storage | Use `ssh pve-template-builder 'pvesm status'` and choose storage that supports cloud-init snippets/drives in your Proxmox setup. |

@@ -42,6 +42,8 @@ fi
 CONFIG_FILE=$1
 SCRIPT_DIR=$(script_dir)
 ROOT_DIR=$(CDPATH='' cd -- "${SCRIPT_DIR}/.." && pwd)
+# shellcheck source=scripts/ssh-transport.sh
+. "${SCRIPT_DIR}/ssh-transport.sh"
 CONFIG_BASENAME=$(basename -- "$CONFIG_FILE")
 
 "${SCRIPT_DIR}/validate-config.sh" "$CONFIG_FILE"
@@ -64,26 +66,32 @@ command_exists ssh || die "ssh is required"
 command_exists rsync || die "rsync is required"
 command_exists tee || die "tee is required"
 
+ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
+
+info "Checking SSH access to ${SSH_TRANSPORT_DISPLAY}"
+# shellcheck disable=SC2029
+ssh_transport_ssh 'true' || die "Cannot connect to Proxmox host ${PROXMOX_HOST}. Check TEMPLATE_BUILDER_SSH_CONFIG, SSH_HOST, SSH_USER, SSH_KEY_PATH, and the remote authorized_keys file."
+
 mkdir -p "${ROOT_DIR}/logs"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 LOG_FILE="${ROOT_DIR}/logs/${TIMESTAMP}-${TEMPLATE_NAME}.log"
 
-info "Preparing remote directory ${PROXMOX_HOST}:${PROXMOX_REMOTE_DIR}"
+info "Preparing remote directory ${SSH_TRANSPORT_DISPLAY}:${PROXMOX_REMOTE_DIR}"
 # shellcheck disable=SC2029
-ssh "$PROXMOX_HOST" "mkdir -p '${PROXMOX_REMOTE_DIR}/scripts' '${PROXMOX_REMOTE_DIR}/configs' '${PROXMOX_REMOTE_DIR}/configs/images' '${PROXMOX_REMOTE_DIR}/.cache/images'"
+ssh_transport_ssh "mkdir -p '${PROXMOX_REMOTE_DIR}/scripts' '${PROXMOX_REMOTE_DIR}/configs' '${PROXMOX_REMOTE_DIR}/configs/images' '${PROXMOX_REMOTE_DIR}/.cache/images'"
 
-info "Syncing scripts to ${PROXMOX_HOST}"
-rsync -az --delete "${ROOT_DIR}/scripts/" "${PROXMOX_HOST}:${PROXMOX_REMOTE_DIR}/scripts/"
+info "Syncing scripts to ${SSH_TRANSPORT_DISPLAY}"
+rsync -az --delete -e "$SSH_TRANSPORT_RSYNC_RSH" "${ROOT_DIR}/scripts/" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/"
 
 info "Syncing selected config ${CONFIG_BASENAME}"
-rsync -az "$CONFIG_FILE" "${PROXMOX_HOST}:${PROXMOX_REMOTE_DIR}/configs/${CONFIG_BASENAME}"
+rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "$CONFIG_FILE" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/configs/${CONFIG_BASENAME}"
 
 info "Syncing image profiles"
-rsync -az "${ROOT_DIR}/configs/images/" "${PROXMOX_HOST}:${PROXMOX_REMOTE_DIR}/configs/images/"
+rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${ROOT_DIR}/configs/images/" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/configs/images/"
 
 info "Starting remote template build; log: ${LOG_FILE}"
 # shellcheck disable=SC2029
-ssh "$PROXMOX_HOST" "cd '${PROXMOX_REMOTE_DIR}' && ./scripts/build-proxmox-cloud-template.sh './configs/${CONFIG_BASENAME}'" 2>&1 | tee "$LOG_FILE"
+ssh_transport_ssh "cd '${PROXMOX_REMOTE_DIR}' && ./scripts/build-proxmox-cloud-template.sh './configs/${CONFIG_BASENAME}'" 2>&1 | tee "$LOG_FILE"
 
 ok "Remote build completed"
 printf 'Log: %s\n' "$LOG_FILE"

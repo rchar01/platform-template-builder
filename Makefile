@@ -49,7 +49,7 @@ init-ssh: check-ssh-config
 ## Check required local tools, and remote tools if config exists
 check-tools:
 	@if [ -f "$(CONFIG)" ]; then \
-		./scripts/check-tools.sh "$(CONFIG)"; \
+		TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" ./scripts/check-tools.sh "$(CONFIG)"; \
 	else \
 		./scripts/check-tools.sh || exit $$?; \
 		printf '%s\n' "[WARN] Skipped remote tool checks because $(CONFIG) does not exist"; \
@@ -62,11 +62,11 @@ validate: check-config
 
 ## Build template remotely, e.g. TEMPLATE=rocky-9
 build: check-config
-	./scripts/remote-run-template-build.sh $(CONFIG)
+	TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" ./scripts/remote-run-template-build.sh $(CONFIG)
 
 ## Cleanup template remotely, e.g. TEMPLATE=rocky-9
 cleanup: check-config
-	./scripts/cleanup-template-vm.sh $(CONFIG)
+	TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" ./scripts/cleanup-template-vm.sh $(CONFIG)
 
 check-config:
 	@test -f "$(CONFIG)" || { printf '%s\n' "Missing $(CONFIG). Create it from configs/$(TEMPLATE)-cloud-base.env.example, or set CONFIG/CONFIG_ROOT to a private config path" >&2; exit 1; }
