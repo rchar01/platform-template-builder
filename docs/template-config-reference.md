@@ -8,6 +8,32 @@ For a normal first build, copy an example and edit only the Proxmox-specific val
 cp configs/rocky-10.1-cloud-base.env.example configs/rocky-10.1-cloud-base.env
 ```
 
+## Private Config Location
+
+For local experiments, copying examples into this repository is acceptable because private `.env` files are ignored.
+
+For real homelab or production use, prefer storing private configs in `platform-private` and point Make at them with `CONFIG_ROOT` or `CONFIG`:
+
+```text
+../platform-private/template-builder/configs/
+  rocky-10.1-cloud-base.env
+  ssh/template-builder.env
+```
+
+```bash
+make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+```
+
+The committed image profiles remain in this repository under `configs/images/`. Private template configs should continue to reference them, for example:
+
+```bash
+IMAGE_PROFILE="configs/images/rocky-10.1.env"
+```
+
+CI/CD should not generate SSH keys. It should provide private keys and private configs through the CI secret system or a checked-out private repo, then run `make check-tools` and `make build` with `CONFIG_ROOT` or `CONFIG`.
+
 ## First-Time Discovery Commands
 
 These commands assume your SSH bootstrap alias is `pve-template-builder`. If you used another alias, replace it in the commands.
@@ -28,7 +54,7 @@ ssh pve-template-builder 'command -v curl || command -v wget'
 | `TEMPLATE_NAME` | Local convention | Use the example name unless adding a new template. See `template-conventions.md`. |
 | `TEMPLATE_VMID` | Local choice plus Proxmox check | Use `ssh pve-template-builder 'qm list'`; pick a free ID in the template range from `template-conventions.md`. |
 | `IMAGE_PROFILE` | Repo config | Use a committed file under `configs/images/`. |
-| `PROXMOX_HOST` | SSH bootstrap | Use the alias from `configs/ssh/template-builder.env`, usually `pve-template-builder`. |
+| `PROXMOX_HOST` | SSH setup | Use a working SSH alias or `user@host`; the optional SSH bootstrap config defaults to `pve-template-builder`. |
 | `PROXMOX_REMOTE_DIR` | Local choice on Proxmox node | Use a writable path on the Proxmox node. `/root/platform-template-builder` is suitable when using root SSH. |
 | `DISK_STORAGE` | Proxmox storage | Use `ssh pve-template-builder 'pvesm status'` and choose storage that can hold VM disks. |
 | `CLOUDINIT_STORAGE` | Proxmox storage | Use `ssh pve-template-builder 'pvesm status'` and choose storage that supports cloud-init snippets/drives in your Proxmox setup. |

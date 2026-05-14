@@ -19,6 +19,7 @@ Use this page as a navigation index for the repository docs.
 
 - First-time setup: start with `../README.md`, then use `proxmox-requirements.md`.
 - Fill in a private template config: use `template-config-reference.md`.
+- Use private configs from `platform-private`: use `template-config-reference.md`.
 - Add or update a template: use `template-conventions.md`, then update the matching files under `../configs/`.
 - Debug a failed build: use `troubleshooting.md`.
 - Understand repository boundaries: read `../README.md` and `../AGENTS.md`.
@@ -26,6 +27,6 @@ Use this page as a navigation index for the repository docs.
 ## Key Repo Paths
 
 - `../configs/*.env.example`: Private template config examples to copy locally.
-- `../configs/ssh/template-builder.env.example`: SSH bootstrap config example.
+- `../configs/ssh/template-builder.env.example`: Optional SSH bootstrap config example for the shared `platform-ssh-init` helper.
 - `../configs/images/*.env`: Committed upstream image profiles.
 - `../scripts/`: Executable implementation for validation, SSH bootstrap, remote build, and cleanup.

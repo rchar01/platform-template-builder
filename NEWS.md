@@ -4,7 +4,8 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
-No unreleased changes.
+- `make init-ssh` now wraps the shared `platform-ssh-init` helper from `platform-tools`; template builds remain independent of the optional helper.
+- Added `CONFIG_ROOT` support for keeping real template-builder configs in an external private repository such as `platform-private`.
 
 ## v1.0.0 - 2026-05-13
 

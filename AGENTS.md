@@ -21,13 +21,14 @@
 
 ## Homelab Platform Context
 
-This repository is one part of a five-repository homelab platform:
+This repository is one part of a homelab platform:
 
 - `platform-template-builder`: builds reusable Proxmox VM templates from cloud images using SSH, `rsync`, and Proxmox `qm` commands.
 - `platform-infra`: provisions Proxmox VMs from those templates using OpenTofu and the Proxmox API.
 - `platform-config`: configures guest operating systems and services using Ansible over SSH.
 - `platform-k8s-bastion`: contains Kubernetes bastion tooling and operational helpers.
 - `platform-docs`: contains architecture notes, runbooks, diagrams, and operational decisions.
+- `platform-tools`: contains shared optional helper tools used by platform repositories, such as `platform-ssh-init`.
 
 The intended lifecycle is:
 
@@ -37,6 +38,7 @@ The intended lifecycle is:
 4. Configure VMs in `platform-config`.
 5. Use `platform-k8s-bastion` for Kubernetes operational access and helpers.
 6. Document design and operations in `platform-docs`.
+7. Use `platform-tools` for optional shared helper commands when useful.
 
 Keep responsibility boundaries strict. When a requested change starts to involve long-lived VM provisioning, OpenTofu resources, Ansible roles, Kubernetes operations, application configuration, production IPs, or secrets, do not add it here. Instead, identify the appropriate downstream repository.
 
@@ -49,7 +51,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 ## Commands Agents Should Not Guess
 
 - Show supported targets: `make help`.
-- Initialize local SSH key/config helper: `make init-ssh SSH_CONFIG=configs/ssh/template-builder.env`.
+- Initialize local SSH key/config helper when `platform-ssh-init` is installed: `make init-ssh SSH_CONFIG=configs/ssh/template-builder.env`.
 - Check local tools, and remote tools if the private config exists: `make check-tools TEMPLATE=rocky-9`.
 - Validate a private config: `make validate TEMPLATE=rocky-9`.
 - Build remotely through SSH/rsync: `make build TEMPLATE=rocky-9`.
@@ -61,10 +63,13 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 ## Config And Makefile Conventions
 
 - Keep Make targets generic; do not re-add OS-specific convenience targets like `build-rocky-9`.
-- `TEMPLATE ?= rocky-9` resolves to `CONFIG ?= configs/$(TEMPLATE)-cloud-base.env`.
-- `SSH_CONFIG ?= configs/ssh/template-builder.env` resolves the private SSH bootstrap config for `make init-ssh`.
+- `CONFIG_ROOT ?= configs` allows private config roots such as `../platform-private/template-builder/configs`.
+- `TEMPLATE ?= rocky-9` resolves to `CONFIG ?= $(CONFIG_ROOT)/$(TEMPLATE)-cloud-base.env`.
+- `SSH_CONFIG ?= $(CONFIG_ROOT)/ssh/template-builder.env` resolves the private SSH bootstrap config for `make init-ssh`.
+- `PLATFORM_SSH_INIT ?= platform-ssh-init` resolves the optional shared SSH helper from `platform-tools`; template builds must not depend on it.
 - Private `configs/*-cloud-base.env` files are ignored and must not be committed.
 - Private `configs/ssh/*.env` files are ignored and must not be committed.
+- Real config values may live outside this repository in `platform-private`; keep committed files here as examples only.
 - Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`.
 - If adding a new template, add both `configs/<template>-cloud-base.env.example` and `configs/images/<template>.env`, then update `README.md`, `docs/README.md`, and `docs/template-conventions.md`.
 

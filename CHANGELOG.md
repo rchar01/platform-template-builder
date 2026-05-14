@@ -7,6 +7,11 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Refactored `make init-ssh` to wrap the shared `platform-ssh-init` helper from `platform-tools`; template builds still require only working SSH access, not the helper.
+- Added `CONFIG_ROOT` support so private template and SSH configs can live in an external private repository such as `platform-private`.
+
 ## [1.0.0] - 2026-05-13
 
 ### Added

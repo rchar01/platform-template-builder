@@ -20,7 +20,22 @@ Root SSH with key authentication is acceptable for the first homelab version. Th
 
 ## SSH Bootstrap
 
-This repository can initialize local SSH client material for template-building access:
+SSH access to Proxmox is required for template builds. The key generator is optional; use it only when you want the shared [`platform-tools`](https://codeberg.org/rch/platform-tools) helper to create local SSH client material.
+
+Install `platform-tools` so `platform-ssh-init` is on `PATH`, or set `PLATFORM_SSH_INIT` to the tool path:
+
+```bash
+git clone https://codeberg.org/rch/platform-tools ../platform-tools
+make -C ../platform-tools install
+```
+
+When using a sibling checkout directly instead:
+
+```bash
+make init-ssh PLATFORM_SSH_INIT=../platform-tools/bin/platform-ssh-init
+```
+
+Initialize local SSH client material for template-building access:
 
 ```bash
 cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
@@ -28,7 +43,15 @@ cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
 make init-ssh
 ```
 
-The helper loads `configs/ssh/template-builder.env`, creates a dedicated ed25519 key under `~/.ssh/` if missing, prints an SSH config block, and prints the `ssh-copy-id` command to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. The helper does not install the key automatically, create Proxmox users, create API tokens, or write to `~/.ssh/config` unless `SSH_WRITE_CONFIG=1` is set.
+For real homelab use, the SSH bootstrap config may live in `platform-private` and be selected with `CONFIG_ROOT`:
+
+```bash
+make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+```
+
+The helper loads the configured SSH bootstrap file from `SSH_CONFIG`, which defaults to `$(CONFIG_ROOT)/ssh/template-builder.env`. It creates a dedicated ed25519 key at the configured `SSH_KEY_PATH` if missing, prints an SSH config block, and prints the `ssh-copy-id` command to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. The helper does not install the key automatically, create Proxmox users, create API tokens, or write to `~/.ssh/config` unless `SSH_WRITE_CONFIG=1` is set.
+
+CI/CD should normally skip `make init-ssh`. Put the private key and SSH config in place through the CI secret system, then run `make check-tools TEMPLATE=...` to verify access.
 
 To create the SSH key without a passphrase:
 

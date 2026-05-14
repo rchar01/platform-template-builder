@@ -8,17 +8,18 @@ It does not provision real workload VMs, assign production IP addresses, run Ope
 
 ## Platform Project
 
-This repository is one part of a five-repository homelab platform project.
+This repository is one part of a homelab platform project.
 
-The repositories are split by responsibility so that template building, infrastructure provisioning, system configuration, Kubernetes bastion tooling, and documentation can evolve independently.
+The repositories are split by responsibility so that template building, infrastructure provisioning, system configuration, Kubernetes bastion tooling, documentation, and shared helper tools can evolve independently.
 
 | Repository | Purpose |
 |---|---|
-| [`platform-template-builder`](https://codeberg.org/rch/platform-template-builder.git) | Builds reusable Proxmox VM templates from cloud images. |
-| [`platform-infra`](https://codeberg.org/rch/platform-infra.git) | Provisions platform infrastructure with OpenTofu. |
-| [`platform-config`](TODO_URL) | Configures operating systems and services with Ansible. |
-| [`platform-k8s-bastion`](TODO_URL) | Contains Kubernetes bastion tooling and operational helpers. |
-| [`platform-docs`](TODO_URL) | Contains architecture notes, runbooks, diagrams, and operational documentation. |
+| [`platform-template-builder`](https://codeberg.org/rch/platform-template-builder) | Builds reusable Proxmox VM templates from cloud images. |
+| [`platform-infra`](https://codeberg.org/rch/platform-infra) | Provisions platform infrastructure with OpenTofu. |
+| [`platform-config`](https://codeberg.org/rch/platform-config) | Configures operating systems and services with Ansible. |
+| [`platform-k8s-bastion`](https://codeberg.org/rch/platform-k8s-bastion) | Contains Kubernetes bastion tooling and operational helpers. |
+| [`platform-docs`](https://codeberg.org/rch/platform-docs) | Contains architecture notes, runbooks, diagrams, and operational documentation. |
+| [`platform-tools`](https://codeberg.org/rch/platform-tools) | Provides shared optional helper tools used by the platform repositories. |
 
 Typical workflow:
 
@@ -28,6 +29,7 @@ platform-template-builder
   -> platform-config
   -> platform-k8s-bastion
 
+platform-tools provides optional shared helper commands.
 platform-docs documents the design and operations across all repositories.
 ```
 
@@ -36,7 +38,7 @@ platform-docs documents the design and operations across all repositories.
 Clone the repository and enter the project directory:
 
 ```bash
-git clone https://codeberg.org/rch/platform-template-builder.git
+git clone https://codeberg.org/rch/platform-template-builder
 cd platform-template-builder
 make help
 ```
@@ -61,7 +63,18 @@ Supported `TEMPLATE` values:
 
 ## SSH Bootstrap
 
-Template builds use SSH and `rsync` from this workstation to the Proxmox node. You can initialize a dedicated local SSH key and config snippet for template-building access:
+Template builds use SSH and `rsync` from this workstation to the Proxmox node. SSH access is required, but this repository does not require the key generator if you already manage keys yourself.
+
+The optional `make init-ssh` helper uses the shared `platform-ssh-init` command from [`platform-tools`](https://codeberg.org/rch/platform-tools). Install `platform-tools` so `platform-ssh-init` is on `PATH`, or set `PLATFORM_SSH_INIT` to the tool path.
+
+Install the shared tools repository when needed:
+
+```bash
+git clone https://codeberg.org/rch/platform-tools ../platform-tools
+make -C ../platform-tools install
+```
+
+You can initialize a dedicated local SSH key and config snippet for template-building access:
 
 ```bash
 cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
@@ -69,7 +82,13 @@ cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
 make init-ssh
 ```
 
-The helper loads a private SSH bootstrap config from `configs/ssh/template-builder.env`, creates an ed25519 key at `~/.ssh/platform-template-builder_ed25519` if it does not already exist, prints an SSH config block, and prints the `ssh-copy-id` command needed to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. It does not install keys on Proxmox, create users, create API tokens, or write to `~/.ssh/config` unless explicitly requested.
+If `platform-ssh-init` is not installed, run with an explicit path:
+
+```bash
+make init-ssh PLATFORM_SSH_INIT=../platform-tools/bin/platform-ssh-init
+```
+
+The helper loads the configured SSH bootstrap file from `SSH_CONFIG`, which defaults to `$(CONFIG_ROOT)/ssh/template-builder.env`. It creates an ed25519 key at the configured `SSH_KEY_PATH` if it does not already exist, prints an SSH config block, and prints the `ssh-copy-id` command needed to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. It does not install keys on Proxmox, create users, create API tokens, or write to `~/.ssh/config` unless explicitly requested.
 
 To create the SSH key without a passphrase:
 
@@ -122,7 +141,7 @@ Local machine:
 - Bash
 - Make
 - SSH client with key access to the Proxmox node
-- `ssh-keygen` when using `make init-ssh`
+- `platform-ssh-init` from `platform-tools` and `ssh-keygen` only when using optional `make init-ssh`
 - `rsync`
 - standard Unix tools such as `awk`, `date`, `basename`, `mkdir`, and `tee`
 
@@ -147,7 +166,37 @@ cp configs/rocky-9-cloud-base.env.example configs/rocky-9-cloud-base.env
 
 Private `.env` files are ignored and must not be committed.
 
-SSH bootstrap uses a separate private config copied from `configs/ssh/template-builder.env.example` to `configs/ssh/template-builder.env`.
+For real homelab or production use, keep private configs outside this public repository, for example in `platform-private`:
+
+```text
+../platform-private/template-builder/configs/
+  rocky-10.1-cloud-base.env
+  ssh/template-builder.env
+```
+
+Use that private config root with:
+
+```bash
+make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+```
+
+You can also point at one explicit config file:
+
+```bash
+make build CONFIG=../platform-private/template-builder/configs/rocky-10.1-cloud-base.env
+```
+
+SSH bootstrap uses a separate private config copied from `configs/ssh/template-builder.env.example` to `$(CONFIG_ROOT)/ssh/template-builder.env`.
+
+The SSH bootstrap helper is optional. CI/CD or manually configured workstations only need the configured private key and SSH alias to exist before running `make check-tools` or `make build`.
+
+When using a private config root, the same root is used for SSH bootstrap:
+
+```bash
+make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+```
 
 For a variable-by-variable guide to filling in private template configs, see `docs/template-config-reference.md`.
 
@@ -175,8 +224,10 @@ make cleanup TEMPLATE=rocky-9
 The generic Make targets resolve configs as:
 
 ```text
-configs/<TEMPLATE>-cloud-base.env
+$(CONFIG_ROOT)/<TEMPLATE>-cloud-base.env
 ```
+
+`CONFIG_ROOT` defaults to `configs`, so local example-based configs still resolve to `configs/<TEMPLATE>-cloud-base.env`.
 
 You can override the config path explicitly:
 
