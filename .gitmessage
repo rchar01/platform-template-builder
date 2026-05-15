@@ -2,7 +2,8 @@
 
 # ==================================================
 # git-tools commit template
-# Installed by git-tools; safe to replace.
+# Installed by git-tools (v1.2.0)
+# Managed file: safe to replace by running bin/git-tools again.
 # ==================================================
 #
 # <type>(<scope>)!: <subject>
