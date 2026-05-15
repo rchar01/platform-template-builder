@@ -2,7 +2,7 @@
 
 Build reusable Proxmox VM templates from upstream Linux cloud images.
 
-This repository owns only the image/template lifecycle: it validates template config, syncs build scripts to a Proxmox node, downloads or reuses a cloud image, imports the disk, attaches cloud-init support, applies base hardware defaults, and converts the VM into a Proxmox template.
+This repository owns only the image/template lifecycle: it validates template config, syncs build scripts to a Proxmox node, downloads or reuses a cloud image, prepares the guest image, imports the disk, attaches cloud-init support, applies base hardware defaults, optionally smoke-tests a clone, and converts the VM into a Proxmox template.
 
 It does not provision real workload VMs, assign production IP addresses, run OpenTofu, run Ansible, configure applications, manage Kubernetes, or store secrets.
 
@@ -80,6 +80,13 @@ make init-ssh SSH_TEST=1
 make check-tools TEMPLATE=rocky-10.1
 make validate TEMPLATE=rocky-10.1
 make build TEMPLATE=rocky-10.1
+
+# strongly recommended before handing the template to platform-infra
+make smoke-test TEMPLATE=rocky-10.1 \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
 If password SSH login is not available, use the manual `/root/.ssh/authorized_keys` fallback in `SSH Bootstrap`.
@@ -118,6 +125,13 @@ make init-ssh SSH_TEST=1 CONFIG_ROOT=../platform-private/template-builder/config
 make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+
+# choose a temporary IP that does not conflict with platform-infra VMs
+make smoke-test TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
 If you do not want to install `platform-tools`, run the helper from a sibling checkout:
@@ -218,8 +232,13 @@ Proxmox node:
 - SSH enabled
 - user can run `qm` and `pvesm`
 - `qm`, `pvesm`, `ip`, `rsync`, and `curl` or `wget`
+- `qemu-img`, `virt-customize`, and `virt-sysprep` for guest image preparation
 - target disk storage, cloud-init storage, and bridge exist
 - write access to `PROXMOX_REMOTE_DIR`
+
+`virt-customize` and `virt-sysprep` are provided by `libguestfs-tools` on Proxmox/Debian. Installing that package may pull a sizable dependency set.
+
+Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"`. Set it to `false` only for temporary troubleshooting; unprepared templates may not have working cloud-init networking, SSH, QEMU guest agent, or serial console support inside clones.
 
 See `docs/proxmox-requirements.md` for detailed checks.
 
@@ -273,7 +292,7 @@ Template configs reference committed image profiles under `configs/images/`:
 IMAGE_PROFILE="configs/images/rocky-9.env"
 ```
 
-Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, optional `IMAGE_SHA256`, and the default cloud-init user for that OS.
+Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, optional `IMAGE_SHA256`, `IMAGE_OS_FAMILY`, and the default cloud-init user for that OS.
 
 ## Usage
 
@@ -283,10 +302,17 @@ Use Make for normal local operation:
 make check-tools TEMPLATE=rocky-9
 make validate TEMPLATE=rocky-9
 make build TEMPLATE=rocky-9
+make smoke-test TEMPLATE=rocky-9 \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 make cleanup TEMPLATE=rocky-9
 ```
 
 `make check-tools` checks local tools first. If `configs/<TEMPLATE>-cloud-base.env` exists, it also checks the configured Proxmox host over SSH.
+
+`make smoke-test` clones a temporary VM from the template, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks cloud-init and guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Use `SMOKE_TEST_KEEP_FAILED=true` to retain a failed clone for debugging.
 
 The generic Make targets resolve configs as:
 
@@ -308,6 +334,7 @@ Direct script usage is also available:
 ./scripts/check-tools.sh configs/rocky-9-cloud-base.env
 ./scripts/validate-config.sh configs/rocky-9-cloud-base.env
 ./scripts/remote-run-template-build.sh configs/rocky-9-cloud-base.env
+./scripts/smoke-test-template.sh configs/rocky-9-cloud-base.env
 ```
 
 `scripts/build-proxmox-cloud-template.sh` is intended to run on the Proxmox node, not directly from the local workstation.

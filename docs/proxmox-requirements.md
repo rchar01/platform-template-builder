@@ -7,7 +7,7 @@ This project builds templates by SSHing to a Proxmox node and running local Prox
 - SSH access to the Proxmox node.
 - A user that can run `qm` and `pvesm` commands.
 - Bash on the Proxmox node.
-- `qm`, `pvesm`, `ip`, `rsync`, and either `curl` or `wget`.
+- `qm`, `pvesm`, `ip`, `rsync`, `qemu-img`, `virt-customize`, `virt-sysprep`, and either `curl` or `wget`.
 - Target VM disk storage exists.
 - Target cloud-init storage exists.
 - Target Linux bridge exists.
@@ -15,6 +15,8 @@ This project builds templates by SSHing to a Proxmox node and running local Prox
 - The SSH user can write to `PROXMOX_REMOTE_DIR`.
 
 If `IMAGE_SHA256` is set in a profile under `configs/images/`, the Proxmox node also needs `sha256sum`.
+
+`virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian. Install it on the template build host before building prepared templates. It may pull a sizable dependency set. Missing tools fail early with messages such as `virt-customize not found; install libguestfs-tools on the template build host.` Guest-prep commands are bounded by `GUEST_PREP_TIMEOUT_SECONDS`, which defaults to `1800` seconds per step.
 
 Root SSH with key authentication is acceptable for the first homelab version. This repository can create local SSH client material for template-build access, but it does not create Proxmox users or manage Proxmox authorization policy.
 
@@ -110,6 +112,8 @@ ssh pve-template-builder 'qm list'
 ssh pve-template-builder 'pvesm status'
 ssh pve-template-builder 'ip link show type bridge'
 ssh pve-template-builder 'command -v rsync'
+ssh pve-template-builder 'command -v qemu-img'
+ssh pve-template-builder 'command -v virt-customize && command -v virt-sysprep'
 ssh pve-template-builder 'command -v curl || command -v wget'
 ```
 
@@ -129,4 +133,20 @@ Run these on the Proxmox node if troubleshooting locally:
 qm list
 pvesm status
 ip link show type bridge
+command -v qemu-img
+command -v virt-customize && command -v virt-sysprep
 ```
+
+## Template Smoke Test
+
+Run a smoke test before handing a rebuilt template to `platform-infra`:
+
+```bash
+make smoke-test TEMPLATE=rocky-9 \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
+```
+
+Choose a temporary IP that is not used by workload VMs, DHCP leases, reservations, or other hosts. The default smoke-test VMID is `9900`, but the script refuses to continue if that VMID already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Failed clones are destroyed by default; set `SMOKE_TEST_KEEP_FAILED=true` to keep one for serial or noVNC debugging.

@@ -20,6 +20,8 @@ Initial template IDs:
 - Templates should not contain secrets.
 - Templates should be generic and cloneable.
 - Cloud-init values should be minimal.
+- Guest images should be prepared before import with cloud-init, QEMU guest agent, SSH, NetworkManager, serial getty, and clone identity cleanup.
+- Templates should be smoke-tested with temporary, non-production IP addresses before handoff to `platform-infra`.
 - Upstream image URLs and filenames should live in committed image profiles under `configs/images/`.
 - Local Proxmox values should live in private `configs/*-cloud-base.env` files copied from examples.
 
@@ -31,6 +33,7 @@ Image profiles define the upstream cloud image source for an operating system:
 IMAGE_URL="https://example.invalid/cloud-image.qcow2"
 IMAGE_NAME="cloud-image.qcow2"
 IMAGE_SHA256=""
+IMAGE_OS_FAMILY="rhel"
 CLOUDINIT_USER="example"
 ```
 
@@ -50,3 +53,16 @@ IMAGE_PROFILE="configs/images/rocky-9.env"
 - Serial console.
 - Cloud-init drive.
 - QEMU guest agent enabled.
+- Proxmox cloud-init type `nocloud`.
+
+## Guest Preparation
+
+Prepared templates install and enable guest-side services before the disk is imported into Proxmox:
+
+- `cloud-init` and the standard cloud-init systemd units.
+- `qemu-guest-agent` and `qemu-guest-agent.service`.
+- `openssh-server` and the OS-specific SSH service.
+- NetworkManager for virtio NIC configuration from Proxmox cloud-init data.
+- `serial-getty@ttyS0.service` for serial-console login.
+
+Guest preparation also removes stale cloud-init state, SSH host keys, NetworkManager connection profiles, non-loopback legacy network-scripts profiles, cloud-init logs, and machine identity files. The template conversion happens only after this preparation succeeds.

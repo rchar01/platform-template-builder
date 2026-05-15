@@ -202,6 +202,17 @@ fi
 
 check_remote_proxmox_marker
 
+PREPARE_GUEST_IMAGE=${PREPARE_GUEST_IMAGE:-true}
+if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
+  check_remote_command timeout
+  check_remote_command qemu-img
+  check_remote_command virt-customize
+  check_remote_command virt-sysprep
+elif [[ "$PREPARE_GUEST_IMAGE" != "false" ]]; then
+  error "PREPARE_GUEST_IMAGE must be true or false"
+  MISSING=1
+fi
+
 if [[ "$MISSING" -ne 0 ]]; then
   die "One or more required tools are missing"
 fi

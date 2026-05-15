@@ -55,6 +55,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Check local tools, and remote tools if the private config exists: `make check-tools TEMPLATE=rocky-9`.
 - Validate a private config: `make validate TEMPLATE=rocky-9`.
 - Build remotely through SSH/rsync: `make build TEMPLATE=rocky-9`.
+- Smoke-test a built template with private temporary IP/key values: `make smoke-test TEMPLATE=rocky-9 SMOKE_TEST_IPV4=... SMOKE_TEST_GATEWAY=... SMOKE_TEST_DNS=... SMOKE_TEST_SSH_KEY=...`.
 - Cleanup only the configured VMID: `make cleanup TEMPLATE=rocky-9`.
 - Syntax verification only: `make verify`.
 - ShellCheck verification: `make shellcheck`.
@@ -65,22 +66,24 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Keep Make targets generic; do not re-add OS-specific convenience targets like `build-rocky-9`.
 - `CONFIG_ROOT ?= configs` allows private config roots such as `../platform-private/template-builder/configs`.
 - `TEMPLATE ?= rocky-9` resolves to `CONFIG ?= $(CONFIG_ROOT)/$(TEMPLATE)-cloud-base.env`.
-- `SSH_CONFIG ?= $(CONFIG_ROOT)/ssh/template-builder.env` resolves the private SSH bootstrap config for `make init-ssh` and the default SSH transport for `check-tools`, `build`, and `cleanup` when the file exists.
+- `SSH_CONFIG ?= $(CONFIG_ROOT)/ssh/template-builder.env` resolves the private SSH bootstrap config for `make init-ssh` and the default SSH transport for `check-tools`, `build`, `smoke-test`, and `cleanup` when the file exists.
 - `PLATFORM_SSH_INIT ?= platform-ssh-init` resolves the optional shared SSH helper from `platform-tools`; template builds must not depend on it.
 - Private `configs/*-cloud-base.env` files are ignored and must not be committed.
 - Private `configs/ssh/*.env` files are ignored and must not be committed.
 - Real config values may live outside this repository in `platform-private`; keep committed files here as examples only.
-- Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`.
+- Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`. Include `IMAGE_OS_FAMILY` so guest preparation can choose package and service names.
 - If adding a new template, add both `configs/<template>-cloud-base.env.example` and `configs/images/<template>.env`, then update `README.md`, `docs/README.md`, and `docs/template-conventions.md`.
 
 ## Verification Notes
 
 - `make verify` only runs `bash -n scripts/*.sh`; run `make shellcheck` after script edits.
 - `make check-tools` can legitimately fail on a workstation missing `rsync`; that is a real prerequisite for remote builds.
+- Guest image preparation requires `qemu-img`, `virt-customize`, and `virt-sysprep` on the Proxmox build host. `virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian.
 - Remote build verification requires a real private config and SSH access to `PROXMOX_HOST`; do not fake a successful Proxmox run.
+- Smoke-test verification requires a safe temporary VMID, non-conflicting temporary IP, gateway, DNS, and SSH key. Do not hard-code production/workload IPs in committed examples.
 
 ## Safety Rules
 
 - Commit only examples such as `.env.example`; never commit private SSH keys, Proxmox API tokens, CA private keys, real `.env` files, real `.tfvars`, Ansible Vault passwords, production inventories, downloaded images, or generated logs.
-- Cleanup and force-recreate paths must only destroy the configured `TEMPLATE_VMID`.
+- Cleanup and force-recreate paths must only destroy the configured `TEMPLATE_VMID`; smoke-test cleanup must only destroy the configured `SMOKE_TEST_VMID`.
 - Preserve the separation between image profiles, local Proxmox template config, and downstream infrastructure/configuration repositories.

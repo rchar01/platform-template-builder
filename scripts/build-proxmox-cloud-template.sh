@@ -20,6 +20,13 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+require_guest_prep_command() {
+  local command_name=$1
+  local package_name=$2
+
+  command_exists "$command_name" || die "${command_name} not found; install ${package_name} on the template build host."
+}
+
 storage_exists() {
   local storage=$1
   pvesm status | awk 'NR > 1 { print $1 }' | grep -Fxq "$storage"
@@ -95,6 +102,66 @@ attach_imported_disk() {
   qm set "$TEMPLATE_VMID" --"${DISK_BUS}0" "$imported_disk"
 }
 
+guest_prep_packages() {
+  case ${IMAGE_OS_FAMILY:-} in
+    debian)
+      printf '%s\n' 'cloud-init,qemu-guest-agent,openssh-server,network-manager'
+      ;;
+    rhel)
+      printf '%s\n' 'cloud-init,qemu-guest-agent,openssh-server,NetworkManager'
+      ;;
+    *)
+      die "IMAGE_OS_FAMILY must be one of: debian rhel"
+      ;;
+  esac
+}
+
+guest_ssh_service() {
+  case ${IMAGE_OS_FAMILY:-} in
+    debian) printf '%s\n' 'ssh.service' ;;
+    rhel) printf '%s\n' 'sshd.service' ;;
+    *) die "IMAGE_OS_FAMILY must be one of: debian rhel" ;;
+  esac
+}
+
+prepare_guest_image() {
+  local packages
+  local ssh_service
+
+  PREPARED_IMAGE_PATH="${IMAGE_CACHE_DIR}/${TEMPLATE_NAME}-prepared.qcow2"
+  packages=$(guest_prep_packages)
+  ssh_service=$(guest_ssh_service)
+
+  info "Preparing guest image ${PREPARED_IMAGE_PATH}"
+  rm -f -- "${PREPARED_IMAGE_PATH}" "${PREPARED_IMAGE_PATH}.tmp"
+  timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" qemu-img convert -O qcow2 "$IMAGE_PATH" "${PREPARED_IMAGE_PATH}.tmp" || die "qemu-img failed while preparing ${PREPARED_IMAGE_PATH}"
+  mv "${PREPARED_IMAGE_PATH}.tmp" "$PREPARED_IMAGE_PATH"
+
+  info "Installing guest packages: ${packages}"
+  timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" --install "$packages" || die "virt-customize failed while installing guest packages in ${PREPARED_IMAGE_PATH}"
+
+  info "Configuring cloud-init, guest services, and serial console"
+  timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
+    --run-command "mkdir -p /etc/cloud/cloud.cfg.d" \
+    --run-command "rm -f /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg" \
+    --run-command "printf '%s\n' 'datasource_list: [ NoCloud, ConfigDrive ]' > /etc/cloud/cloud.cfg.d/90-proxmox-datasource.cfg" \
+    --run-command "systemctl enable cloud-init-local.service cloud-init.service cloud-config.service cloud-final.service qemu-guest-agent.service ${ssh_service} NetworkManager.service serial-getty@ttyS0.service" \
+    --run-command "if command -v grubby >/dev/null 2>&1; then grubby --update-kernel=ALL --args='console=tty0 console=ttyS0,115200n8'; fi" || die "virt-customize failed while configuring guest services in ${PREPARED_IMAGE_PATH}"
+
+  info "Cleaning guest network state and clone identity"
+  timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
+    --run-command "rm -f /etc/NetworkManager/system-connections/*" \
+    --run-command "if [ -d /etc/sysconfig/network-scripts ]; then find /etc/sysconfig/network-scripts -type f -name 'ifcfg-*' ! -name 'ifcfg-lo' -delete; fi" \
+    --run-command "rm -rf /var/lib/cloud/*" \
+    --run-command "rm -f /var/log/cloud-init.log /var/log/cloud-init-output.log" \
+    --run-command "rm -f /etc/ssh/ssh_host_*" \
+    --run-command ": > /etc/machine-id" \
+    --run-command "if [ -d /var/lib/dbus ]; then rm -f /var/lib/dbus/machine-id && ln -s /etc/machine-id /var/lib/dbus/machine-id; fi" || die "virt-customize failed while cleaning guest state in ${PREPARED_IMAGE_PATH}"
+
+  timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-sysprep -a "$PREPARED_IMAGE_PATH" \
+    --operations machine-id,ssh-hostkeys,logfiles,tmp-files,bash-history || die "virt-sysprep failed while cleaning ${PREPARED_IMAGE_PATH}"
+}
+
 if [[ $# -ne 1 ]]; then
   usage
   exit 2
@@ -122,6 +189,9 @@ set +a
 
 IMAGE_CACHE_DIR="${ROOT_DIR}/.cache/images"
 IMAGE_PATH="${IMAGE_CACHE_DIR}/${IMAGE_NAME}"
+PREPARE_GUEST_IMAGE=${PREPARE_GUEST_IMAGE:-true}
+GUEST_PREP_TIMEOUT_SECONDS=${GUEST_PREP_TIMEOUT_SECONDS:-1800}
+IMPORT_IMAGE_PATH=$IMAGE_PATH
 
 info "Checking Proxmox environment"
 [[ -d /etc/pve ]] || die "This script must run on a Proxmox node; /etc/pve is missing"
@@ -130,6 +200,17 @@ command_exists pvesm || die "Required command not found: pvesm"
 command_exists ip || die "Required command not found: ip"
 command_exists curl || command_exists wget || die "Required command not found: curl or wget"
 pvesm status >/dev/null || die "pvesm status failed; check Proxmox storage subsystem"
+
+if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
+  [[ "$GUEST_PREP_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || die "GUEST_PREP_TIMEOUT_SECONDS must be numeric"
+  (( GUEST_PREP_TIMEOUT_SECONDS > 0 )) || die "GUEST_PREP_TIMEOUT_SECONDS must be greater than 0"
+  require_guest_prep_command timeout coreutils
+  require_guest_prep_command qemu-img qemu-utils
+  require_guest_prep_command virt-customize libguestfs-tools
+  require_guest_prep_command virt-sysprep libguestfs-tools
+elif [[ "$PREPARE_GUEST_IMAGE" != "false" ]]; then
+  die "PREPARE_GUEST_IMAGE must be true or false"
+fi
 
 info "Checking Proxmox storage"
 storage_exists "$DISK_STORAGE" || die "Storage ${DISK_STORAGE} does not exist; check pvesm status"
@@ -148,6 +229,11 @@ fi
 
 download_image
 
+if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
+  prepare_guest_image
+  IMPORT_IMAGE_PATH=$PREPARED_IMAGE_PATH
+fi
+
 info "Creating VM shell ${TEMPLATE_VMID} (${TEMPLATE_NAME})"
 qm create "$TEMPLATE_VMID" \
   --name "$TEMPLATE_NAME" \
@@ -160,7 +246,7 @@ qm create "$TEMPLATE_VMID" \
   --bios "$BIOS_TYPE"
 
 info "Importing cloud image disk"
-qm importdisk "$TEMPLATE_VMID" "$IMAGE_PATH" "$DISK_STORAGE"
+qm importdisk "$TEMPLATE_VMID" "$IMPORT_IMAGE_PATH" "$DISK_STORAGE"
 attach_imported_disk
 
 info "Attaching cloud-init drive"
@@ -169,6 +255,7 @@ qm set "$TEMPLATE_VMID" --ide2 "${CLOUDINIT_STORAGE}:cloudinit"
 info "Applying hardware and cloud-init defaults"
 qm set "$TEMPLATE_VMID" --boot order="${DISK_BUS}0"
 qm set "$TEMPLATE_VMID" --serial0 socket --vga serial0
+qm set "$TEMPLATE_VMID" --citype nocloud
 qm set "$TEMPLATE_VMID" --ciuser "$CLOUDINIT_USER"
 
 if [[ "$ENABLE_QEMU_AGENT" == "true" ]]; then

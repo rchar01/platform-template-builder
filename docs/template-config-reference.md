@@ -26,6 +26,13 @@ make init-ssh SSH_TEST=1
 make check-tools TEMPLATE=rocky-10.1
 make validate TEMPLATE=rocky-10.1
 make build TEMPLATE=rocky-10.1
+
+# choose a temporary IP that is not used by platform-infra VMs
+make smoke-test TEMPLATE=rocky-10.1 \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
 ## Running With Separate Private Config Repo
@@ -51,6 +58,12 @@ make init-ssh SSH_TEST=1 CONFIG_ROOT=../platform-private/template-builder/config
 make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
 make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+
+make smoke-test TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
 The committed image profiles remain in this repository under `configs/images/`. Private template configs should continue to reference them, for example:
@@ -92,7 +105,9 @@ ssh pve-template-builder 'command -v curl || command -v wget'
 | `MACHINE_TYPE` | Template default | Use `q35`. |
 | `DISK_BUS` | Script-supported value | Use `scsi`; the validation script currently accepts only `scsi`. |
 | `SCSI_CONTROLLER` | Template default | Use `virtio-scsi-pci`. |
-| `ENABLE_QEMU_AGENT` | Local choice | Usually `true`; the Proxmox flag is enabled, but the guest package may still need later configuration. |
+| `ENABLE_QEMU_AGENT` | Local choice | Usually `true`; enables the Proxmox VM setting. Guest image preparation installs and enables the in-guest agent service. |
+| `PREPARE_GUEST_IMAGE` | Build behavior | Usually `true`; installs/enables cloud-init, SSH, QEMU guest agent, NetworkManager, serial getty, and cleans clone identity before import. |
+| `GUEST_PREP_TIMEOUT_SECONDS` | Optional safety override | Defaults to `1800`; bounds each `qemu-img`, `virt-customize`, and `virt-sysprep` guest-prep step. |
 | `FORCE_RECREATE` | Safety switch | Keep `false` unless you intentionally want to destroy and recreate the configured `TEMPLATE_VMID`. |
 
 ## Values Usually Edited First
@@ -116,6 +131,7 @@ Image profiles are committed files under `configs/images/`. Template configs ref
 | `IMAGE_URL` | Committed image profile. |
 | `IMAGE_NAME` | Committed image profile. |
 | `IMAGE_SHA256` | Committed image profile when upstream provides a checksum. |
+| `IMAGE_OS_FAMILY` | Committed image profile; currently `rhel` or `debian` for guest preparation package/service names. |
 | `CLOUDINIT_USER` | Committed image profile default for the OS. |
 
 Do not copy image metadata into private template configs unless you are intentionally adding or changing an image profile.
@@ -128,6 +144,11 @@ After editing the private template config:
 make validate TEMPLATE=rocky-10.1
 make check-tools TEMPLATE=rocky-10.1
 make build TEMPLATE=rocky-10.1
+make smoke-test TEMPLATE=rocky-10.1 \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
 Verify the resulting template on Proxmox:

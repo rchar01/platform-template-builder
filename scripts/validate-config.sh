@@ -96,6 +96,7 @@ required_vars=(
   IMAGE_PROFILE
   IMAGE_URL
   IMAGE_NAME
+  IMAGE_OS_FAMILY
   PROXMOX_HOST
   PROXMOX_REMOTE_DIR
   DISK_STORAGE
@@ -125,9 +126,17 @@ is_number "$MEMORY_MB" || die "MEMORY_MB must be numeric"
 
 is_bool "$ENABLE_QEMU_AGENT" || die "ENABLE_QEMU_AGENT must be true or false"
 is_bool "$FORCE_RECREATE" || die "FORCE_RECREATE must be true or false"
+if [[ -n "${PREPARE_GUEST_IMAGE:-}" ]]; then
+  is_bool "$PREPARE_GUEST_IMAGE" || die "PREPARE_GUEST_IMAGE must be true or false"
+fi
+if [[ -n "${GUEST_PREP_TIMEOUT_SECONDS:-}" ]]; then
+  is_number "$GUEST_PREP_TIMEOUT_SECONDS" || die "GUEST_PREP_TIMEOUT_SECONDS must be numeric"
+  (( GUEST_PREP_TIMEOUT_SECONDS > 0 )) || die "GUEST_PREP_TIMEOUT_SECONDS must be greater than 0"
+fi
 
 require_one_of BIOS_TYPE "$BIOS_TYPE" seabios ovmf
 require_one_of DISK_BUS "$DISK_BUS" scsi
+require_one_of IMAGE_OS_FAMILY "$IMAGE_OS_FAMILY" debian rhel
 
 ok "Template config valid"
 printf '\n'
@@ -144,5 +153,6 @@ printf '  Bridge: %s\n' "$BRIDGE"
 printf '\n'
 printf 'Image:\n'
 printf '  Profile: %s\n' "$IMAGE_PROFILE"
+printf '  OS family: %s\n' "$IMAGE_OS_FAMILY"
 printf '  URL: %s\n' "$IMAGE_URL"
 printf '  File: %s\n' "$IMAGE_NAME"

@@ -6,9 +6,10 @@ CONFIG_ROOT ?= configs
 CONFIG ?= $(CONFIG_ROOT)/$(TEMPLATE)-cloud-base.env
 SSH_CONFIG ?= $(CONFIG_ROOT)/ssh/template-builder.env
 PLATFORM_SSH_INIT ?= platform-ssh-init
+SMOKE_TEST_VMID ?= 9900
 
 .PHONY: help verify syntax shellcheck init-ssh check-tools \
-	validate build cleanup \
+	validate build smoke-test cleanup \
 	check-config check-ssh-config
 
 ## Show available commands
@@ -63,6 +64,26 @@ validate: check-config
 ## Build template remotely, e.g. TEMPLATE=rocky-9
 build: check-config
 	TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" ./scripts/remote-run-template-build.sh $(CONFIG)
+
+## Clone and verify a temporary VM from the template
+smoke-test: check-config
+	TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" \
+	SMOKE_TEST_VMID="$(SMOKE_TEST_VMID)" \
+	SMOKE_TEST_NAME="$(SMOKE_TEST_NAME)" \
+	SMOKE_TEST_IPV4="$(SMOKE_TEST_IPV4)" \
+	SMOKE_TEST_GATEWAY="$(SMOKE_TEST_GATEWAY)" \
+	SMOKE_TEST_DNS="$(SMOKE_TEST_DNS)" \
+	SMOKE_TEST_BRIDGE="$(SMOKE_TEST_BRIDGE)" \
+	SMOKE_TEST_USER="$(SMOKE_TEST_USER)" \
+	SMOKE_TEST_SEARCHDOMAIN="$(SMOKE_TEST_SEARCHDOMAIN)" \
+	SMOKE_TEST_SSH_KEY="$(SMOKE_TEST_SSH_KEY)" \
+	SMOKE_TEST_SSH_PUBLIC_KEY="$(SMOKE_TEST_SSH_PUBLIC_KEY)" \
+	SMOKE_TEST_KEEP_FAILED="$(SMOKE_TEST_KEEP_FAILED)" \
+	SMOKE_TEST_CLEANUP="$(SMOKE_TEST_CLEANUP)" \
+	SMOKE_TEST_FORCE_RECREATE="$(SMOKE_TEST_FORCE_RECREATE)" \
+	SMOKE_TEST_BOOT_TIMEOUT_SECONDS="$(SMOKE_TEST_BOOT_TIMEOUT_SECONDS)" \
+	SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS="$(SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS)" \
+	./scripts/smoke-test-template.sh $(CONFIG)
 
 ## Cleanup template remotely, e.g. TEMPLATE=rocky-9
 cleanup: check-config

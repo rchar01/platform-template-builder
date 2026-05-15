@@ -7,6 +7,17 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Guest image preparation with `qemu-img`, `virt-customize`, and `virt-sysprep` before Proxmox disk import so clones have cloud-init, QEMU guest agent, SSH, NetworkManager, serial getty, and clean identity/state.
+- `make smoke-test` for cloning a temporary VM from a built template and validating cloud-init networking, QEMU guest agent, SSH login, and graceful shutdown before handoff to `platform-infra`.
+
+### Changed
+
+- Prepared builds now require `qemu-img`, `virt-customize`, and `virt-sysprep` on the Proxmox build host unless `PREPARE_GUEST_IMAGE=false` is set for troubleshooting.
+- Image profiles now include `IMAGE_OS_FAMILY` so guest preparation can choose OS-specific package and service names.
+- Template builds now set Proxmox cloud-init type to `nocloud` explicitly.
+
 ## [1.1.0] - 2026-05-14
 
 ### Changed

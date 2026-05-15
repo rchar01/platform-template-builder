@@ -4,7 +4,9 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
-No unreleased changes.
+- Template builds now prepare guest images with `libguestfs-tools` before import, installing and enabling cloud-init, QEMU guest agent, SSH, NetworkManager, and serial console support while cleaning clone identity/state.
+- Added `make smoke-test` to clone a temporary VM from a template and verify cloud-init networking, QEMU guest agent, SSH, and graceful shutdown before handing the template to `platform-infra`.
+- Image profiles now declare `IMAGE_OS_FAMILY`; Proxmox templates now set `citype: nocloud` explicitly.
 
 ## v1.1.0 - 2026-05-14
 

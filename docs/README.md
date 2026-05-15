@@ -21,7 +21,7 @@ Use this page as a navigation index for the repository docs.
 - Fill in a private template config: use `template-config-reference.md`.
 - Use private configs from `platform-private`: use `template-config-reference.md`.
 - Add or update a template: use `template-conventions.md`, then update the matching files under `../configs/`.
-- Debug a failed build: use `troubleshooting.md`.
+- Smoke-test or debug a failed build/clone: use `troubleshooting.md`.
 - Understand repository boundaries: read `../README.md` and `../AGENTS.md`.
 
 ## Key Repo Paths
@@ -29,4 +29,4 @@ Use this page as a navigation index for the repository docs.
 - `../configs/*.env.example`: Private template config examples to copy locally.
 - `../configs/ssh/template-builder.env.example`: Optional SSH bootstrap config example for the shared `platform-ssh-init` helper.
 - `../configs/images/*.env`: Committed upstream image profiles.
-- `../scripts/`: Executable implementation for validation, SSH bootstrap, remote build, and cleanup.
+- `../scripts/`: Executable implementation for validation, SSH bootstrap, remote build, smoke testing, and cleanup.

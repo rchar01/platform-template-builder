@@ -117,15 +117,21 @@ Fix: Inspect the `unusedX` disk entry and attach it manually if needed, then upd
 
 Symptom: Cloned VM boots without network access.
 
-Likely cause: Wrong bridge, missing cloud-init network configuration in the provisioning repository, or guest OS naming differences.
+Likely cause: Wrong bridge, missing clone cloud-init network configuration, failed guest image preparation, cloud-init network disabled in the guest, or stale guest network profiles.
 
 Check:
 
 ```bash
 ssh pve-template-builder 'qm config 9000 | grep net0'
+ssh pve-template-builder 'qm config 9000 | grep citype'
+make smoke-test TEMPLATE=rocky-9 \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
-Fix: Verify the bridge on the template and apply clone-specific network config from infrastructure/cloud-init.
+Fix: Verify the bridge on the template, rebuild with `PREPARE_GUEST_IMAGE=true`, and use smoke-test output to confirm Proxmox cloud-init static networking before handing the template to `platform-infra`.
 
 ## Cloud-Init Does Not Apply
 
@@ -137,20 +143,54 @@ Check:
 
 ```bash
 ssh pve-template-builder 'qm config 9000 | grep ide2'
+ssh pve-template-builder 'qm config 9000 | grep citype'
 ```
 
-Fix: Ensure the template has `ide2: <storage>:cloudinit` and set clone-specific cloud-init values in the infrastructure repository.
+Fix: Ensure the template has `ide2: <storage>:cloudinit` and `citype: nocloud`, then rebuild so guest preparation installs/enables cloud-init and removes `/var/lib/cloud` state. Set clone-specific cloud-init values in the infrastructure repository.
 
 ## QEMU Guest Agent Not Available Inside Guest
 
 Symptom: Proxmox shows guest agent unavailable after cloning.
 
-Likely cause: The template enables the Proxmox agent flag, but the guest image may not include or start the agent package.
+Likely cause: The template enables the Proxmox agent flag, but the guest image was not prepared, or the in-guest `qemu-guest-agent.service` failed to start.
 
 Check:
 
 ```bash
 ssh pve-template-builder 'qm config 9000 | grep agent'
+make smoke-test TEMPLATE=rocky-9 \
+  SMOKE_TEST_IPV4=<temporary-ip/cidr> \
+  SMOKE_TEST_GATEWAY=<gateway-ip> \
+  SMOKE_TEST_DNS=<dns-ip> \
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
-Fix: Install and enable the guest agent later through the configuration repository if the image does not include it.
+Fix: Rebuild the template with guest preparation enabled. The builder installs and enables `qemu-guest-agent` before template conversion, and the smoke test fails if `qm agent <vmid> ping` does not respond.
+
+## Serial Console Has No Login Prompt
+
+Symptom: Proxmox serial console opens but no useful login prompt appears.
+
+Likely cause: The guest did not enable `serial-getty@ttyS0`, kernel console output is not configured, or the VM display is set to serial-only without guest support.
+
+Check:
+
+```bash
+ssh pve-template-builder 'qm config 9000 | grep -E "^(serial0|vga):"'
+```
+
+Fix: Rebuild the template with guest preparation enabled. The builder keeps `serial0: socket`, `vga: serial0`, enables `serial-getty@ttyS0.service`, and adds `ttyS0` kernel console arguments when `grubby` is available in the guest image.
+
+## Smoke-Test VMID Already Exists
+
+Symptom: `make smoke-test` refuses to continue because VMID `9900` already exists.
+
+Likely cause: The default smoke-test VMID is already assigned.
+
+Check:
+
+```bash
+ssh pve-template-builder 'qm status 9900 || true; qm config 9900'
+```
+
+Fix: Use a different temporary VMID with `SMOKE_TEST_VMID=<free-vmid>`, or set `SMOKE_TEST_FORCE_RECREATE=true` only after verifying the existing VMID can be destroyed.
