@@ -203,11 +203,18 @@ fi
 check_remote_proxmox_marker
 
 PREPARE_GUEST_IMAGE=${PREPARE_GUEST_IMAGE:-true}
+GUEST_PREP_MODE=${GUEST_PREP_MODE:-safe}
 if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
+  if [[ "$GUEST_PREP_MODE" != "safe" && "$GUEST_PREP_MODE" != "full" ]]; then
+    error "GUEST_PREP_MODE must be one of: safe full"
+    MISSING=1
+  fi
   check_remote_command timeout
   check_remote_command qemu-img
-  check_remote_command virt-customize
-  check_remote_command virt-sysprep
+  if [[ "$GUEST_PREP_MODE" == "full" ]]; then
+    check_remote_command virt-customize
+    check_remote_command virt-sysprep
+  fi
 elif [[ "$PREPARE_GUEST_IMAGE" != "false" ]]; then
   error "PREPARE_GUEST_IMAGE must be true or false"
   MISSING=1

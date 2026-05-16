@@ -4,11 +4,12 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
-- Template builds now prepare guest images with `libguestfs-tools` before import, installing and enabling cloud-init, QEMU guest agent, SSH, NetworkManager, and serial console support while cleaning clone identity/state.
+- Template builds now prepare a per-template image copy with `qemu-img` before import while preserving the upstream guest filesystem in safe mode.
 - Added `make smoke-test` to clone a temporary VM from a template and verify cloud-init networking, QEMU guest agent, SSH, and graceful shutdown before handing the template to `platform-infra`.
 - Added `make cleanup-smoke-test` for removing kept smoke-test VMs without starting another smoke test.
 - Templates now default to normal VGA/noVNC output with a serial port attached, making failed boots easier to debug than serial-only display.
 - Image profiles now declare `IMAGE_OS_FAMILY`; Proxmox templates now set `citype: nocloud` explicitly.
+- Rocky 10.1 now uses `CPU_TYPE="host"` in the example config to avoid Proxmox generic CPU compatibility issues.
 
 ## v1.1.0 - 2026-05-14
 

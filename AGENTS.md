@@ -74,13 +74,14 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Real config values may live outside this repository in `platform-private`; keep committed files here as examples only.
 - Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`. Include `IMAGE_OS_FAMILY` so guest preparation can choose package and service names.
 - Template configs should default `TEMPLATE_CONSOLE_MODE` to `vga-serial` so noVNC remains usable when networking or QEMU guest agent startup fails.
+- Rocky/RHEL 10 template configs should set `CPU_TYPE="host"` unless another x86-64-v3-capable Proxmox CPU model is deliberately chosen.
 - If adding a new template, add both `configs/<template>-cloud-base.env.example` and `configs/images/<template>.env`, then update `README.md`, `docs/README.md`, and `docs/template-conventions.md`.
 
 ## Verification Notes
 
 - `make verify` only runs `bash -n scripts/*.sh`; run `make shellcheck` after script edits.
 - `make check-tools` can legitimately fail on a workstation missing `rsync`; that is a real prerequisite for remote builds.
-- Guest image preparation requires `qemu-img`, `virt-customize`, and `virt-sysprep` on the Proxmox build host. `virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian.
+- Safe guest image preparation requires `qemu-img` on the Proxmox build host. Full offline customization additionally requires `virt-customize` and `virt-sysprep`; those come from `libguestfs-tools` on Proxmox/Debian.
 - Remote build verification requires a real private config and SSH access to `PROXMOX_HOST`; do not fake a successful Proxmox run.
 - Smoke-test verification requires a safe temporary VMID, non-conflicting temporary IP, gateway, DNS, and SSH key. Do not hard-code production/workload IPs in committed examples.
 

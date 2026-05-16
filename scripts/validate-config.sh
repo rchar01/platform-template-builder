@@ -156,6 +156,7 @@ printf '  Remote dir: %s\n' "$PROXMOX_REMOTE_DIR"
 printf '  Disk storage: %s\n' "$DISK_STORAGE"
 printf '  Cloud-init storage: %s\n' "$CLOUDINIT_STORAGE"
 printf '  Bridge: %s\n' "$BRIDGE"
+printf '  CPU type: %s\n' "${CPU_TYPE:-default}"
 printf '  Console mode: %s\n' "${TEMPLATE_CONSOLE_MODE:-vga-serial}"
 printf '\n'
 printf 'Image:\n'

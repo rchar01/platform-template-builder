@@ -100,6 +100,7 @@ ssh pve-template-builder 'command -v curl || command -v wget'
 | `CLOUDINIT_STORAGE` | Proxmox storage | Use `ssh pve-template-builder 'pvesm status'` and choose storage that supports cloud-init snippets/drives in your Proxmox setup. |
 | `BRIDGE` | Proxmox network | Use `ssh pve-template-builder 'ip link show type bridge'`; common default is `vmbr0`. |
 | `CPU_CORES` | Local template default | Default `2` is fine for base templates. |
+| `CPU_TYPE` | Proxmox CPU model | Optional. Use `host` for Rocky/RHEL 10 unless you have selected another x86-64-v3-capable model. Leave unset to use the Proxmox default. |
 | `MEMORY_MB` | Local template default | Default `2048` is fine for base templates. |
 | `BIOS_TYPE` | Template default | Use `seabios` unless you specifically need UEFI/OVMF. |
 | `MACHINE_TYPE` | Template default | Use `q35`. |
@@ -108,8 +109,8 @@ ssh pve-template-builder 'command -v curl || command -v wget'
 | `TEMPLATE_CONSOLE_MODE` | Template default | Use `vga-serial` for normal noVNC debugging plus serial port support. Use `serial` only after serial-only console behavior is proven. |
 | `ENABLE_QEMU_AGENT` | Local choice | Usually `true`; enables the Proxmox VM setting. Safe guest prep does not install the in-guest package; smoke testing verifies whether the upstream image already has a working agent. |
 | `PREPARE_GUEST_IMAGE` | Build behavior | Usually `true`; prepares a per-template image copy before import. |
-| `GUEST_PREP_MODE` | Build behavior | Use `safe`; preserves upstream bootability and only runs basic sanity checks. `full` enables invasive offline customization for testing. |
-| `GUEST_PREP_TIMEOUT_SECONDS` | Optional safety override | Defaults to `1800`; bounds each `qemu-img`, `virt-customize`, and `virt-sysprep` guest-prep step. |
+| `GUEST_PREP_MODE` | Build behavior | Use `safe`; copies the upstream image without mounting or mutating the guest filesystem. `full` enables invasive offline customization for testing. |
+| `GUEST_PREP_TIMEOUT_SECONDS` | Optional safety override | Defaults to `1800`; bounds each guest-prep step. |
 | `FORCE_RECREATE` | Safety switch | Keep `false` unless you intentionally want to destroy and recreate the configured `TEMPLATE_VMID`. |
 
 ## Values Usually Edited First

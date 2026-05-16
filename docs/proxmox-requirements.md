@@ -7,7 +7,7 @@ This project builds templates by SSHing to a Proxmox node and running local Prox
 - SSH access to the Proxmox node.
 - A user that can run `qm` and `pvesm` commands.
 - Bash on the Proxmox node.
-- `qm`, `pvesm`, `ip`, `rsync`, `qemu-img`, `virt-customize`, `virt-sysprep`, and either `curl` or `wget`.
+- `qm`, `pvesm`, `ip`, `rsync`, `qemu-img`, and either `curl` or `wget`.
 - Target VM disk storage exists.
 - Target cloud-init storage exists.
 - Target Linux bridge exists.
@@ -16,7 +16,7 @@ This project builds templates by SSHing to a Proxmox node and running local Prox
 
 If `IMAGE_SHA256` is set in a profile under `configs/images/`, the Proxmox node also needs `sha256sum`.
 
-`virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian. Install it on the template build host before building prepared templates. It may pull a sizable dependency set. Missing tools fail early with messages such as `virt-customize not found; install libguestfs-tools on the template build host.` Guest-prep commands are bounded by `GUEST_PREP_TIMEOUT_SECONDS`, which defaults to `1800` seconds per step.
+`virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian and are required only for `GUEST_PREP_MODE="full"`. Install it on the template build host before testing full offline customization. It may pull a sizable dependency set. Missing tools fail early with messages such as `virt-customize not found; install libguestfs-tools on the template build host.` Guest-prep commands are bounded by `GUEST_PREP_TIMEOUT_SECONDS`, which defaults to `1800` seconds per step.
 
 Root SSH with key authentication is acceptable for the first homelab version. This repository can create local SSH client material for template-build access, but it does not create Proxmox users or manage Proxmox authorization policy.
 
@@ -113,8 +113,13 @@ ssh pve-template-builder 'pvesm status'
 ssh pve-template-builder 'ip link show type bridge'
 ssh pve-template-builder 'command -v rsync'
 ssh pve-template-builder 'command -v qemu-img'
-ssh pve-template-builder 'command -v virt-customize && command -v virt-sysprep'
 ssh pve-template-builder 'command -v curl || command -v wget'
+```
+
+For `GUEST_PREP_MODE="full"`, also check:
+
+```bash
+ssh pve-template-builder 'command -v virt-customize && command -v virt-sysprep'
 ```
 
 For mapping `pvesm`, `qm`, and bridge output to template config variables, see `template-config-reference.md`.
@@ -134,7 +139,6 @@ qm list
 pvesm status
 ip link show type bridge
 command -v qemu-img
-command -v virt-customize && command -v virt-sysprep
 ```
 
 ## Template Smoke Test

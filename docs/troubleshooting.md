@@ -179,7 +179,7 @@ Check:
 ssh pve-template-builder 'qm config 9000 | grep -E "^(serial0|vga):"'
 ```
 
-Fix: Rebuild the template with `TEMPLATE_CONSOLE_MODE="vga-serial"` and guest preparation enabled. The builder keeps `serial0: socket`, uses `vga: std` for noVNC debugging, and asks `grubby` to set both `console=tty0` and `console=ttyS0,115200n8` when `grubby` is available in the guest image.
+Fix: Rebuild the template with `TEMPLATE_CONSOLE_MODE="vga-serial"` and `GUEST_PREP_MODE="safe"`. The builder keeps `serial0: socket`, uses `vga: std` for noVNC debugging, and avoids offline guest filesystem mutation in safe mode.
 
 ## Guest Kernel Panics Killing Init
 
@@ -194,7 +194,22 @@ ssh pve-template-builder 'qm config 9000'
 ssh pve-template-builder 'qm config 9900'
 ```
 
-Fix: Rebuild the template with `GUEST_PREP_MODE="safe"`. Safe mode avoids offline package installation, sysprep, machine-id rewrites, and SELinux relabeling so the upstream cloud image package/service state is preserved. Use `GUEST_PREP_MODE="full"` only when testing those invasive customizations separately.
+Fix: Rebuild the template with `GUEST_PREP_MODE="safe"`. Safe mode avoids offline package installation, sysprep, machine-id rewrites, SELinux relabeling, and all other guest filesystem mutation. For Rocky/RHEL 10, also set `CPU_TYPE="host"` or another x86-64-v3-capable CPU model; Proxmox's generic default CPU can be too old for early userspace.
+
+## Rocky 10 Stops Before SSH Or QEMU Guest Agent
+
+Symptom: Rocky 10 reaches GRUB or early kernel output, but SSH and QEMU guest agent never start.
+
+Likely cause: The VM is using Proxmox's default generic CPU model, which may not expose the CPU features required by Rocky/RHEL 10 userspace.
+
+Check:
+
+```bash
+ssh pve-template-builder 'qm config 9003 | grep -E "^(cpu|machine|bios):"'
+ssh pve-template-builder 'qm config 9900 | grep -E "^(cpu|machine|bios):"'
+```
+
+Fix: Set `CPU_TYPE="host"` in the Rocky 10.1 template config, rebuild the template, and rerun the smoke test.
 
 ## Smoke Test Times Out Waiting For QEMU Guest Agent
 

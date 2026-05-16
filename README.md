@@ -232,15 +232,18 @@ Proxmox node:
 - SSH enabled
 - user can run `qm` and `pvesm`
 - `qm`, `pvesm`, `ip`, `rsync`, and `curl` or `wget`
-- `qemu-img`, `virt-customize`, and `virt-sysprep` for guest image preparation
+- `qemu-img` for safe guest image preparation
+- `virt-customize` and `virt-sysprep` only when using `GUEST_PREP_MODE="full"`
 - target disk storage, cloud-init storage, and bridge exist
 - write access to `PROXMOX_REMOTE_DIR`
 
-`virt-customize` and `virt-sysprep` are provided by `libguestfs-tools` on Proxmox/Debian. Installing that package may pull a sizable dependency set.
+`virt-customize` and `virt-sysprep` are provided by `libguestfs-tools` on Proxmox/Debian. Installing that package may pull a sizable dependency set. Safe guest preparation does not require `libguestfs-tools`.
 
-Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP_MODE="safe"`. Safe mode copies the upstream image, verifies basic boot files, and aligns kernel console arguments with `TEMPLATE_CONSOLE_MODE` when `grubby` is available. It does not perform offline package installation, service enablement, sysprep, machine-id rewrites, or SELinux relabeling. `GUEST_PREP_MODE="full"` keeps the more invasive offline customization path for later testing.
+Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP_MODE="safe"`. Safe mode only copies the upstream image with `qemu-img` and does not mount or mutate the guest filesystem. `GUEST_PREP_MODE="full"` keeps the more invasive offline customization path for later testing.
 
 Template console mode defaults to `TEMPLATE_CONSOLE_MODE="vga-serial"`, which keeps a serial port attached but uses normal VGA/noVNC output for debugging. Set `TEMPLATE_CONSOLE_MODE="serial"` only after serial-only guest console behavior is proven for the image.
+
+Rocky/RHEL 10 images may require newer x86-64 CPU features than Proxmox's generic default CPU exposes. The Rocky 10.1 example sets `CPU_TYPE="host"`; use the same value in private Rocky 10.1 configs unless you have selected another compatible CPU model.
 
 See `docs/proxmox-requirements.md` for detailed checks.
 

@@ -47,6 +47,7 @@ IMAGE_PROFILE="configs/images/rocky-9.env"
 
 - 2 cores.
 - 2048 MB RAM.
+- Host CPU model for Rocky/RHEL 10 templates.
 - Virtio network.
 - SCSI disk.
 - `virtio-scsi-pci` controller.
@@ -57,7 +58,7 @@ IMAGE_PROFILE="configs/images/rocky-9.env"
 
 ## Guest Preparation
 
-Safe guest preparation preserves the upstream cloud image package/service state, verifies basic boot files, and aligns kernel console arguments with `TEMPLATE_CONSOLE_MODE` when `grubby` is available before the disk is imported into Proxmox. Full guest preparation is available for testing and attempts to install and enable guest-side services before import:
+Safe guest preparation copies the upstream cloud image without mounting or mutating the guest filesystem before the disk is imported into Proxmox. Full guest preparation is available for testing and attempts to install and enable guest-side services before import:
 
 - `cloud-init` and the standard cloud-init systemd units.
 - `qemu-guest-agent` and `qemu-guest-agent.service`.

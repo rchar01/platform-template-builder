@@ -158,9 +158,6 @@ prepare_guest_image() {
   local ssh_service
 
   PREPARED_IMAGE_PATH="${IMAGE_CACHE_DIR}/${TEMPLATE_NAME}-prepared.qcow2"
-  console_command=$(guest_console_command)
-  packages=$(guest_prep_packages)
-  ssh_service=$(guest_ssh_service)
 
   info "Preparing guest image ${PREPARED_IMAGE_PATH}"
   rm -f -- "${PREPARED_IMAGE_PATH}" "${PREPARED_IMAGE_PATH}.tmp"
@@ -168,13 +165,13 @@ prepare_guest_image() {
   mv "${PREPARED_IMAGE_PATH}.tmp" "$PREPARED_IMAGE_PATH"
 
   if [[ "$GUEST_PREP_MODE" == "safe" ]]; then
-    info "Using safe guest preparation; preserving upstream image boot path"
-    timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
-      --run-command "test -e /etc/os-release" \
-      --run-command "test -x /sbin/init" \
-      --run-command "$console_command" || die "virt-customize failed guest boot sanity checks in ${PREPARED_IMAGE_PATH}"
+    info "Using safe guest preparation; copied upstream image without guest modifications"
     return 0
   fi
+
+  console_command=$(guest_console_command)
+  packages=$(guest_prep_packages)
+  ssh_service=$(guest_ssh_service)
 
   info "Installing guest packages: ${packages}"
   timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" --install "$packages" || die "virt-customize failed while installing guest packages in ${PREPARED_IMAGE_PATH}"
@@ -262,8 +259,10 @@ if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
   (( GUEST_PREP_TIMEOUT_SECONDS > 0 )) || die "GUEST_PREP_TIMEOUT_SECONDS must be greater than 0"
   require_guest_prep_command timeout coreutils
   require_guest_prep_command qemu-img qemu-utils
-  require_guest_prep_command virt-customize libguestfs-tools
-  require_guest_prep_command virt-sysprep libguestfs-tools
+  if [[ "$GUEST_PREP_MODE" == "full" ]]; then
+    require_guest_prep_command virt-customize libguestfs-tools
+    require_guest_prep_command virt-sysprep libguestfs-tools
+  fi
 elif [[ "$PREPARE_GUEST_IMAGE" != "false" ]]; then
   die "PREPARE_GUEST_IMAGE must be true or false"
 fi
@@ -315,6 +314,9 @@ qm set "$TEMPLATE_VMID" --ide2 "${CLOUDINIT_STORAGE}:cloudinit"
 
 info "Applying hardware and cloud-init defaults"
 qm set "$TEMPLATE_VMID" --boot order="${DISK_BUS}0"
+if [[ -n "${CPU_TYPE:-}" ]]; then
+  qm set "$TEMPLATE_VMID" --cpu "$CPU_TYPE"
+fi
 apply_console_defaults
 qm set "$TEMPLATE_VMID" --citype nocloud
 qm set "$TEMPLATE_VMID" --ciuser "$CLOUDINIT_USER"
