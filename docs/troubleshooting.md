@@ -252,3 +252,5 @@ For repeated local debugging after checking the VMID:
 ```bash
 CLEANUP_ASSUME_YES=true make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900
 ```
+
+Cleanup force-stops the smoke-test VM before destroying it, so it still works when the guest is kernel-panicked or QEMU guest agent is unavailable.

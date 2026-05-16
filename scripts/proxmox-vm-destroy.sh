@@ -39,8 +39,8 @@ proxmox_vm_stop_if_running() {
   local vmid=$1
 
   if qm status "$vmid" | grep -Eq '^status:[[:space:]]+running$'; then
-    proxmox_vm_destroy_warn "Stopping running VMID ${vmid} before destroy"
-    qm shutdown "$vmid" --timeout 60 || qm stop "$vmid"
+    proxmox_vm_destroy_warn "Force-stopping running VMID ${vmid} before destroy"
+    qm stop "$vmid"
   fi
 }
 

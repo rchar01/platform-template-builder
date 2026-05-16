@@ -320,7 +320,7 @@ make cleanup TEMPLATE=rocky-9
 
 `make smoke-test` clones a temporary VM from the template, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks cloud-init and guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. QEMU guest-agent timeouts print Proxmox diagnostics and keep the failed VM automatically for noVNC/console debugging.
 
-`make cleanup-smoke-test` destroys only `SMOKE_TEST_VMID`, stopping it first if needed. `make cleanup` destroys only `TEMPLATE_VMID`. Both require typing the target VMID unless `CLEANUP_ASSUME_YES=true` is set, and both use Proxmox purge cleanup plus unreferenced-disk cleanup when supported by the installed Proxmox version.
+`make cleanup-smoke-test` destroys only `SMOKE_TEST_VMID`, force-stopping it first if needed so broken guests do not block cleanup on QEMU guest agent or ACPI shutdown. `make cleanup` destroys only `TEMPLATE_VMID` with the same destroy flow. Both require typing the target VMID unless `CLEANUP_ASSUME_YES=true` is set, and both use Proxmox purge cleanup plus unreferenced-disk cleanup when supported by the installed Proxmox version.
 
 The generic Make targets resolve configs as:
 

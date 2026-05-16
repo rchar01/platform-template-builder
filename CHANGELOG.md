@@ -25,6 +25,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Safe guest preparation is now copy-only and does not mount or mutate the guest filesystem.
 - Rocky 10.1 template config now sets `CPU_TYPE="host"` so Proxmox exposes a CPU model suitable for Rocky/RHEL 10 userspace.
 - Template and smoke-test cleanup now share a Proxmox destroy helper that purges VM job config and destroys unreferenced disks when supported.
+- Cleanup now force-stops running VMs before destroy so broken guests without QEMU guest agent or ACPI shutdown do not block cleanup.
 
 ## [1.1.0] - 2026-05-14
 

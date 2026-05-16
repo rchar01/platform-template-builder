@@ -162,3 +162,5 @@ make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900
 ```
 
 Use `CLEANUP_ASSUME_YES=true` only when you have verified the configured VMID is safe to destroy.
+
+Cleanup force-stops running VMs before destroying them. This is intentional because failed smoke-test guests may not have working QEMU guest agent or ACPI shutdown paths.
