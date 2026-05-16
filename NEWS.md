@@ -11,6 +11,7 @@ This file gives a short, release-oriented view of what changed between versions.
 - Image profiles now declare `IMAGE_OS_FAMILY`; Proxmox templates now set `citype: nocloud` explicitly.
 - Rocky 10.1 now uses `CPU_TYPE="host"` in the example config to avoid Proxmox generic CPU compatibility issues.
 - Smoke tests now handle Rocky/RHEL 10 cloud-init `degraded done` status when only recoverable Proxmox user-data deprecation warnings are present.
+- Example guest configs now consistently include the guest-prep timeout default, and the SSH bootstrap example keeps its test command focused on Proxmox reachability.
 
 ## v1.1.0 - 2026-05-14
 

@@ -29,6 +29,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Template and smoke-test cleanup now share a Proxmox destroy helper that purges VM job config and destroys unreferenced disks when supported.
 - Cleanup now force-stops running VMs before destroy so broken guests without QEMU guest agent or ACPI shutdown do not block cleanup.
 - Smoke-test cloud-init checks now run as root when possible, use non-interactive sudo for non-root users, and accept `cloud-init status` exit code `2` only when JSON status is `done` with no top-level errors.
+- Example guest configs now consistently include `GUEST_PREP_TIMEOUT_SECONDS="1800"`, and the SSH bootstrap example now uses a minimal Proxmox reachability test instead of duplicating `make check-tools` checks.
 
 ## [1.1.0] - 2026-05-14
 
