@@ -183,8 +183,8 @@ remote_required=(
   ip
   rsync
   awk
-  dirname
   grep
+  dirname
   mkdir
   mv
   pwd

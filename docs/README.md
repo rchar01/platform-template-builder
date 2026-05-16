@@ -29,4 +29,4 @@ Use this page as a navigation index for the repository docs.
 - `../configs/*.env.example`: Private template config examples to copy locally.
 - `../configs/ssh/template-builder.env.example`: Optional SSH bootstrap config example for the shared `platform-ssh-init` helper.
 - `../configs/images/*.env`: Committed upstream image profiles.
-- `../scripts/`: Executable implementation for validation, SSH bootstrap, remote build, smoke testing, and cleanup.
+- `../scripts/`: Executable implementation for validation, SSH bootstrap, remote build, smoke testing, smoke-test cleanup, and template cleanup.

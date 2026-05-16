@@ -150,3 +150,11 @@ make smoke-test TEMPLATE=rocky-9 \
 ```
 
 Choose a temporary IP that is not used by workload VMs, DHCP leases, reservations, or other hosts. The default smoke-test VMID is `9900`, but the script refuses to continue if that VMID already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Failed clones are destroyed by default except QEMU guest-agent timeouts, which print diagnostics and keep the VM automatically for noVNC/console debugging. The default boot wait is `SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900`.
+
+Clean a kept smoke-test VM without starting a new smoke test:
+
+```bash
+make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900
+```
+
+Use `CLEANUP_ASSUME_YES=true` only when you have verified the configured VMID is safe to destroy.

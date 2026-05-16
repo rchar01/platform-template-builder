@@ -65,36 +65,41 @@ set +a
 command_exists ssh || die "ssh is required"
 command_exists rsync || die "rsync is required"
 
+SMOKE_TEST_VMID=${SMOKE_TEST_VMID:-9900}
+SMOKE_TEST_NAME=${SMOKE_TEST_NAME:-platform-template-smoke-${SMOKE_TEST_VMID}}
+[[ "$SMOKE_TEST_VMID" =~ ^[0-9]+$ ]] || die "SMOKE_TEST_VMID must be numeric"
+
 ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
 
 info "Checking SSH access to ${SSH_TRANSPORT_DISPLAY}"
 # shellcheck disable=SC2029
 ssh_transport_ssh 'true' || die "Cannot connect to Proxmox host ${PROXMOX_HOST}. Check TEMPLATE_BUILDER_SSH_CONFIG, SSH_HOST, SSH_USER, SSH_KEY_PATH, and the remote authorized_keys file."
 
-info "Checking VMID ${TEMPLATE_VMID} on ${SSH_TRANSPORT_DISPLAY}"
+info "Checking smoke-test VMID ${SMOKE_TEST_VMID} on ${SSH_TRANSPORT_DISPLAY}"
 # shellcheck disable=SC2029
-if ! ssh_transport_ssh "qm status '${TEMPLATE_VMID}' >/dev/null 2>&1"; then
-  die "VMID ${TEMPLATE_VMID} does not exist on ${SSH_TRANSPORT_DISPLAY}"
+if ! ssh_transport_ssh "qm status '${SMOKE_TEST_VMID}' >/dev/null 2>&1"; then
+  die "Smoke-test VMID ${SMOKE_TEST_VMID} does not exist on ${SSH_TRANSPORT_DISPLAY}"
 fi
 
-warn "Target for cleanup: VMID ${TEMPLATE_VMID} (${TEMPLATE_NAME}) on ${SSH_TRANSPORT_DISPLAY}"
+warn "Target for cleanup: smoke-test VMID ${SMOKE_TEST_VMID} (${SMOKE_TEST_NAME}) on ${SSH_TRANSPORT_DISPLAY}"
 # shellcheck disable=SC2029
-ssh_transport_ssh "qm config '${TEMPLATE_VMID}'"
+ssh_transport_ssh "qm config '${SMOKE_TEST_VMID}'"
 
 if [[ "${CLEANUP_ASSUME_YES:-false}" != "true" ]]; then
-  printf 'Type VMID %s to destroy: ' "$TEMPLATE_VMID"
+  printf 'Type VMID %s to destroy: ' "$SMOKE_TEST_VMID"
   read -r confirmation
-  if [[ "$confirmation" != "$TEMPLATE_VMID" ]]; then
+  if [[ "$confirmation" != "$SMOKE_TEST_VMID" ]]; then
     die "Confirmation did not match; cleanup aborted"
   fi
 fi
 
-warn "Destroying only VMID ${TEMPLATE_VMID}"
 info "Syncing destroy helper to ${SSH_TRANSPORT_DISPLAY}"
 # shellcheck disable=SC2029
 ssh_transport_ssh "mkdir -p '${PROXMOX_REMOTE_DIR}/scripts'"
 rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${SCRIPT_DIR}/proxmox-vm-destroy.sh" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/proxmox-vm-destroy.sh"
-# shellcheck disable=SC2029
-ssh_transport_ssh "cd '${PROXMOX_REMOTE_DIR}' && . './scripts/proxmox-vm-destroy.sh' && proxmox_vm_destroy '${TEMPLATE_VMID}'"
 
-ok "Destroyed VMID ${TEMPLATE_VMID}"
+warn "Destroying only smoke-test VMID ${SMOKE_TEST_VMID}"
+# shellcheck disable=SC2029
+ssh_transport_ssh "cd '${PROXMOX_REMOTE_DIR}' && . './scripts/proxmox-vm-destroy.sh' && proxmox_vm_destroy '${SMOKE_TEST_VMID}'"
+
+ok "Destroyed smoke-test VMID ${SMOKE_TEST_VMID}"

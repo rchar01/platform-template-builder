@@ -9,7 +9,7 @@ PLATFORM_SSH_INIT ?= platform-ssh-init
 SMOKE_TEST_VMID ?= 9900
 
 .PHONY: help verify syntax shellcheck init-ssh check-tools \
-	validate build smoke-test cleanup \
+	validate build smoke-test cleanup-smoke-test cleanup \
 	check-config check-ssh-config
 
 ## Show available commands
@@ -86,9 +86,17 @@ smoke-test: check-config
 	SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS="$(SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS)" \
 	./scripts/smoke-test-template.sh $(CONFIG)
 
+## Cleanup only the configured smoke-test VMID
+cleanup-smoke-test: check-config
+	TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" \
+	SMOKE_TEST_VMID="$(SMOKE_TEST_VMID)" \
+	SMOKE_TEST_NAME="$(SMOKE_TEST_NAME)" \
+	CLEANUP_ASSUME_YES="$(CLEANUP_ASSUME_YES)" \
+	./scripts/cleanup-smoke-test-vm.sh $(CONFIG)
+
 ## Cleanup template remotely, e.g. TEMPLATE=rocky-9
 cleanup: check-config
-	TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" ./scripts/cleanup-template-vm.sh $(CONFIG)
+	TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" CLEANUP_ASSUME_YES="$(CLEANUP_ASSUME_YES)" ./scripts/cleanup-template-vm.sh $(CONFIG)
 
 check-config:
 	@test -f "$(CONFIG)" || { printf '%s\n' "Missing $(CONFIG). Create it from configs/$(TEMPLATE)-cloud-base.env.example, or set CONFIG/CONFIG_ROOT to a private config path" >&2; exit 1; }

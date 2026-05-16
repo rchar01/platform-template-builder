@@ -225,3 +225,15 @@ ssh pve-template-builder 'qm status 9900 || true; qm config 9900'
 ```
 
 Fix: Use a different temporary VMID with `SMOKE_TEST_VMID=<free-vmid>`, or set `SMOKE_TEST_FORCE_RECREATE=true` only after verifying the existing VMID can be destroyed.
+
+To remove a kept smoke-test VM directly:
+
+```bash
+make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900
+```
+
+For repeated local debugging after checking the VMID:
+
+```bash
+CLEANUP_ASSUME_YES=true make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900
+```

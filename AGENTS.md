@@ -56,6 +56,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Validate a private config: `make validate TEMPLATE=rocky-9`.
 - Build remotely through SSH/rsync: `make build TEMPLATE=rocky-9`.
 - Smoke-test a built template with private temporary IP/key values: `make smoke-test TEMPLATE=rocky-9 SMOKE_TEST_IPV4=... SMOKE_TEST_GATEWAY=... SMOKE_TEST_DNS=... SMOKE_TEST_SSH_KEY=...`.
+- Cleanup only the configured smoke-test VMID: `make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900`.
 - Cleanup only the configured VMID: `make cleanup TEMPLATE=rocky-9`.
 - Syntax verification only: `make verify`.
 - ShellCheck verification: `make shellcheck`.
@@ -86,5 +87,5 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 ## Safety Rules
 
 - Commit only examples such as `.env.example`; never commit private SSH keys, Proxmox API tokens, CA private keys, real `.env` files, real `.tfvars`, Ansible Vault passwords, production inventories, downloaded images, or generated logs.
-- Cleanup and force-recreate paths must only destroy the configured `TEMPLATE_VMID`; smoke-test cleanup must only destroy the configured `SMOKE_TEST_VMID`.
+- Cleanup and force-recreate paths must only destroy the configured `TEMPLATE_VMID`; smoke-test cleanup must only destroy the configured `SMOKE_TEST_VMID`. Use `CLEANUP_ASSUME_YES=true` only after verifying the VMID is safe to destroy.
 - Preserve the separation between image profiles, local Proxmox template config, and downstream infrastructure/configuration repositories.
