@@ -211,6 +211,14 @@ ssh pve-template-builder 'qm config 9900 | grep -E "^(cpu|machine|bios):"'
 
 Fix: Set `CPU_TYPE="host"` in the Rocky 10.1 template config, rebuild the template, and rerun the smoke test.
 
+## Smoke Test Times Out During Cloud-Init Status
+
+Symptom: `make smoke-test` reaches SSH, then fails while checking cloud-init and guest services, sometimes with exit code `124`.
+
+Likely cause: On Rocky/RHEL 10 images, unprivileged `cloud-init status` may fail reading runtime state, and `cloud-init status --wait` may exit `2` when cloud-init completed with only recoverable deprecation warnings from Proxmox-generated user data.
+
+Fix: Use the current smoke-test script. It runs the cloud-init status check as root when already root, or through `sudo -n` when testing as a non-root user with sudo available. It accepts exit code `2` only when JSON status is `done` and top-level `errors` is empty. If the script still fails here, inspect the kept VM with `sudo cloud-init status --long` and `/var/log/cloud-init.log`.
+
 ## Smoke Test Times Out Waiting For QEMU Guest Agent
 
 Symptom: `make smoke-test` starts the clone, then fails with `Timed out waiting for qm agent <vmid> ping`.

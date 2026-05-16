@@ -137,6 +137,35 @@ guest_ssh_timeout() {
     "$@"
 }
 
+guest_cloud_init_wait() {
+  local seconds=$1
+
+  # shellcheck disable=SC2016
+  guest_ssh_timeout "$seconds" '
+if [ "$(id -u)" -eq 0 ]; then
+  cloud_init_output=$(cloud-init status --wait --format json 2>&1)
+elif command -v sudo >/dev/null 2>&1; then
+  cloud_init_output=$(sudo -n cloud-init status --wait --format json 2>&1)
+else
+  cloud_init_output=$(cloud-init status --wait --format json 2>&1)
+fi
+cloud_init_rc=$?
+
+if [ "$cloud_init_rc" -eq 0 ]; then
+  exit 0
+fi
+
+if [ "$cloud_init_rc" -eq 2 ]; then
+  if printf "%s\n" "$cloud_init_output" | python3 -c "import json, sys; data = json.load(sys.stdin); sys.exit(0 if data.get(\"status\") == \"done\" and not data.get(\"errors\") else 1)"; then
+    exit 0
+  fi
+fi
+
+printf "%s\n" "$cloud_init_output" >&2
+exit "$cloud_init_rc"
+'
+}
+
 cleanup_smoke_vm() {
   if [[ -n "${REMOTE_PUBLIC_KEY_FILE:-}" ]]; then
     # shellcheck disable=SC2029
@@ -343,7 +372,8 @@ done
 ok "SSH login succeeded"
 
 info "Checking cloud-init and guest services"
-guest_ssh_timeout "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" "cloud-init status --wait && systemctl is-active '${SMOKE_TEST_SSH_SERVICE}'" >/dev/null
+guest_cloud_init_wait "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS"
+guest_ssh_timeout "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" "systemctl is-active '${SMOKE_TEST_SSH_SERVICE}'" >/dev/null
 ok "cloud-init and SSH service are healthy"
 
 info "Waiting for QEMU guest agent"
