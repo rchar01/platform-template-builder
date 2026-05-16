@@ -7,6 +7,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-16
+
 ### Added
 
 - Safe guest image preparation with `qemu-img` before Proxmox disk import, with opt-in full offline customization through `GUEST_PREP_MODE="full"`.
@@ -26,6 +28,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rocky 10.1 template config now sets `CPU_TYPE="host"` so Proxmox exposes a CPU model suitable for Rocky/RHEL 10 userspace.
 - Template and smoke-test cleanup now share a Proxmox destroy helper that purges VM job config and destroys unreferenced disks when supported.
 - Cleanup now force-stops running VMs before destroy so broken guests without QEMU guest agent or ACPI shutdown do not block cleanup.
+- Smoke-test cloud-init checks now run as root when possible, use non-interactive sudo for non-root users, and accept `cloud-init status` exit code `2` only when JSON status is `done` with no top-level errors.
 
 ## [1.1.0] - 2026-05-14
 
