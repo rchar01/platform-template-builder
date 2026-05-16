@@ -11,12 +11,17 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Guest image preparation with `qemu-img`, `virt-customize`, and `virt-sysprep` before Proxmox disk import so clones have cloud-init, QEMU guest agent, SSH, NetworkManager, serial getty, and clean identity/state.
 - `make smoke-test` for cloning a temporary VM from a built template and validating cloud-init networking, QEMU guest agent, SSH login, and graceful shutdown before handoff to `platform-infra`.
+- Configurable template console mode, defaulting to VGA/noVNC plus serial port support for failed-boot debugging.
 
 ### Changed
 
 - Prepared builds now require `qemu-img`, `virt-customize`, and `virt-sysprep` on the Proxmox build host unless `PREPARE_GUEST_IMAGE=false` is set for troubleshooting.
 - Image profiles now include `IMAGE_OS_FAMILY` so guest preparation can choose OS-specific package and service names.
 - Template builds now set Proxmox cloud-init type to `nocloud` explicitly.
+- Smoke tests now keep QEMU guest-agent timeout failures automatically and print Proxmox diagnostics before exiting.
+- Guest cleanup now performs final machine-id setup after `virt-sysprep` and relabels SELinux contexts for RHEL-family images to avoid broken first boots.
+- Guest preparation now defaults to safe mode to preserve upstream cloud image bootability; full offline customization remains opt-in with `GUEST_PREP_MODE="full"`.
+- Safe guest preparation now aligns kernel console arguments with `TEMPLATE_CONSOLE_MODE` when `grubby` is available, so noVNC can show kernel boot output in `vga-serial` mode.
 
 ## [1.1.0] - 2026-05-14
 

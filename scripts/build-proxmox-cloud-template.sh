@@ -102,6 +102,20 @@ attach_imported_disk() {
   qm set "$TEMPLATE_VMID" --"${DISK_BUS}0" "$imported_disk"
 }
 
+apply_console_defaults() {
+  case $TEMPLATE_CONSOLE_MODE in
+    serial)
+      qm set "$TEMPLATE_VMID" --serial0 socket --vga serial0
+      ;;
+    vga-serial)
+      qm set "$TEMPLATE_VMID" --serial0 socket --vga std
+      ;;
+    *)
+      die "TEMPLATE_CONSOLE_MODE must be one of: serial vga-serial"
+      ;;
+  esac
+}
+
 guest_prep_packages() {
   case ${IMAGE_OS_FAMILY:-} in
     debian)
@@ -124,11 +138,27 @@ guest_ssh_service() {
   esac
 }
 
+guest_console_command() {
+  case $TEMPLATE_CONSOLE_MODE in
+    serial)
+      printf '%s\n' "if command -v grubby >/dev/null 2>&1; then grubby --update-kernel=ALL --remove-args='console=tty0 console=ttyS0 console=ttyS0,115200n8' || true; grubby --update-kernel=ALL --args='console=ttyS0,115200n8'; fi"
+      ;;
+    vga-serial)
+      printf '%s\n' "if command -v grubby >/dev/null 2>&1; then grubby --update-kernel=ALL --remove-args='console=tty0 console=ttyS0 console=ttyS0,115200n8' || true; grubby --update-kernel=ALL --args='console=tty0 console=ttyS0,115200n8'; fi"
+      ;;
+    *)
+      die "TEMPLATE_CONSOLE_MODE must be one of: serial vga-serial"
+      ;;
+  esac
+}
+
 prepare_guest_image() {
   local packages
+  local console_command
   local ssh_service
 
   PREPARED_IMAGE_PATH="${IMAGE_CACHE_DIR}/${TEMPLATE_NAME}-prepared.qcow2"
+  console_command=$(guest_console_command)
   packages=$(guest_prep_packages)
   ssh_service=$(guest_ssh_service)
 
@@ -136,6 +166,15 @@ prepare_guest_image() {
   rm -f -- "${PREPARED_IMAGE_PATH}" "${PREPARED_IMAGE_PATH}.tmp"
   timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" qemu-img convert -O qcow2 "$IMAGE_PATH" "${PREPARED_IMAGE_PATH}.tmp" || die "qemu-img failed while preparing ${PREPARED_IMAGE_PATH}"
   mv "${PREPARED_IMAGE_PATH}.tmp" "$PREPARED_IMAGE_PATH"
+
+  if [[ "$GUEST_PREP_MODE" == "safe" ]]; then
+    info "Using safe guest preparation; preserving upstream image boot path"
+    timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
+      --run-command "test -e /etc/os-release" \
+      --run-command "test -x /sbin/init" \
+      --run-command "$console_command" || die "virt-customize failed guest boot sanity checks in ${PREPARED_IMAGE_PATH}"
+    return 0
+  fi
 
   info "Installing guest packages: ${packages}"
   timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" --install "$packages" || die "virt-customize failed while installing guest packages in ${PREPARED_IMAGE_PATH}"
@@ -146,7 +185,7 @@ prepare_guest_image() {
     --run-command "rm -f /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg" \
     --run-command "printf '%s\n' 'datasource_list: [ NoCloud, ConfigDrive ]' > /etc/cloud/cloud.cfg.d/90-proxmox-datasource.cfg" \
     --run-command "systemctl enable cloud-init-local.service cloud-init.service cloud-config.service cloud-final.service qemu-guest-agent.service ${ssh_service} NetworkManager.service serial-getty@ttyS0.service" \
-    --run-command "if command -v grubby >/dev/null 2>&1; then grubby --update-kernel=ALL --args='console=tty0 console=ttyS0,115200n8'; fi" || die "virt-customize failed while configuring guest services in ${PREPARED_IMAGE_PATH}"
+    --run-command "$console_command" || die "virt-customize failed while configuring guest services in ${PREPARED_IMAGE_PATH}"
 
   info "Cleaning guest network state and clone identity"
   timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
@@ -154,12 +193,23 @@ prepare_guest_image() {
     --run-command "if [ -d /etc/sysconfig/network-scripts ]; then find /etc/sysconfig/network-scripts -type f -name 'ifcfg-*' ! -name 'ifcfg-lo' -delete; fi" \
     --run-command "rm -rf /var/lib/cloud/*" \
     --run-command "rm -f /var/log/cloud-init.log /var/log/cloud-init-output.log" \
-    --run-command "rm -f /etc/ssh/ssh_host_*" \
-    --run-command ": > /etc/machine-id" \
-    --run-command "if [ -d /var/lib/dbus ]; then rm -f /var/lib/dbus/machine-id && ln -s /etc/machine-id /var/lib/dbus/machine-id; fi" || die "virt-customize failed while cleaning guest state in ${PREPARED_IMAGE_PATH}"
+    --run-command "rm -f /etc/ssh/ssh_host_*" || die "virt-customize failed while cleaning guest state in ${PREPARED_IMAGE_PATH}"
 
   timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-sysprep -a "$PREPARED_IMAGE_PATH" \
-    --operations machine-id,ssh-hostkeys,logfiles,tmp-files,bash-history || die "virt-sysprep failed while cleaning ${PREPARED_IMAGE_PATH}"
+    --operations ssh-hostkeys,logfiles,tmp-files,bash-history || die "virt-sysprep failed while cleaning ${PREPARED_IMAGE_PATH}"
+
+  info "Finalizing guest identity and boot sanity checks"
+  timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
+    --run-command "test -e /etc/os-release" \
+    --run-command "test -x /sbin/init" \
+    --run-command ": > /etc/machine-id" \
+    --run-command "if [ -d /var/lib/dbus ]; then rm -f /var/lib/dbus/machine-id && ln -s /etc/machine-id /var/lib/dbus/machine-id; fi" \
+    --run-command "rm -rf /var/lib/cloud/*" || die "virt-customize failed while finalizing guest identity in ${PREPARED_IMAGE_PATH}"
+
+  if [[ "$IMAGE_OS_FAMILY" == "rhel" ]]; then
+    info "Relabeling SELinux contexts"
+    timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" --selinux-relabel || die "virt-customize failed while relabeling SELinux contexts in ${PREPARED_IMAGE_PATH}"
+  fi
 }
 
 if [[ $# -ne 1 ]]; then
@@ -190,7 +240,9 @@ set +a
 IMAGE_CACHE_DIR="${ROOT_DIR}/.cache/images"
 IMAGE_PATH="${IMAGE_CACHE_DIR}/${IMAGE_NAME}"
 PREPARE_GUEST_IMAGE=${PREPARE_GUEST_IMAGE:-true}
+GUEST_PREP_MODE=${GUEST_PREP_MODE:-safe}
 GUEST_PREP_TIMEOUT_SECONDS=${GUEST_PREP_TIMEOUT_SECONDS:-1800}
+TEMPLATE_CONSOLE_MODE=${TEMPLATE_CONSOLE_MODE:-vga-serial}
 IMPORT_IMAGE_PATH=$IMAGE_PATH
 
 info "Checking Proxmox environment"
@@ -202,6 +254,10 @@ command_exists curl || command_exists wget || die "Required command not found: c
 pvesm status >/dev/null || die "pvesm status failed; check Proxmox storage subsystem"
 
 if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
+  case $GUEST_PREP_MODE in
+    safe | full) ;;
+    *) die "GUEST_PREP_MODE must be one of: safe full" ;;
+  esac
   [[ "$GUEST_PREP_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || die "GUEST_PREP_TIMEOUT_SECONDS must be numeric"
   (( GUEST_PREP_TIMEOUT_SECONDS > 0 )) || die "GUEST_PREP_TIMEOUT_SECONDS must be greater than 0"
   require_guest_prep_command timeout coreutils
@@ -211,6 +267,11 @@ if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
 elif [[ "$PREPARE_GUEST_IMAGE" != "false" ]]; then
   die "PREPARE_GUEST_IMAGE must be true or false"
 fi
+
+case $TEMPLATE_CONSOLE_MODE in
+  serial | vga-serial) ;;
+  *) die "TEMPLATE_CONSOLE_MODE must be one of: serial vga-serial" ;;
+esac
 
 info "Checking Proxmox storage"
 storage_exists "$DISK_STORAGE" || die "Storage ${DISK_STORAGE} does not exist; check pvesm status"
@@ -254,7 +315,7 @@ qm set "$TEMPLATE_VMID" --ide2 "${CLOUDINIT_STORAGE}:cloudinit"
 
 info "Applying hardware and cloud-init defaults"
 qm set "$TEMPLATE_VMID" --boot order="${DISK_BUS}0"
-qm set "$TEMPLATE_VMID" --serial0 socket --vga serial0
+apply_console_defaults
 qm set "$TEMPLATE_VMID" --citype nocloud
 qm set "$TEMPLATE_VMID" --ciuser "$CLOUDINIT_USER"
 

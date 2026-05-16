@@ -41,11 +41,12 @@ verify: syntax
 
 ## Initialize local SSH key/config for Proxmox template builds
 init-ssh: check-ssh-config
-	PLATFORM_SSH_INIT="$(PLATFORM_SSH_INIT)" ./scripts/init-proxmox-ssh.sh "$(SSH_CONFIG)" \
-		$(if $(SSH_EMPTY_PASSPHRASE),--empty-passphrase) \
-		$(if $(SSH_WRITE_CONFIG),--write-config) \
-		$(if $(SSH_TEST),--test) \
-		$(if $(SSH_PRINT_PUBLIC_KEY),--print-public-key)
+	@args=''; \
+	if [ -n "$(SSH_EMPTY_PASSPHRASE)" ]; then args="$$args --empty-passphrase"; fi; \
+	if [ -n "$(SSH_WRITE_CONFIG)" ]; then args="$$args --write-config"; fi; \
+	if [ -n "$(SSH_TEST)" ]; then args="$$args --test"; fi; \
+	if [ -n "$(SSH_PRINT_PUBLIC_KEY)" ]; then args="$$args --print-public-key"; fi; \
+	PLATFORM_SSH_INIT="$(PLATFORM_SSH_INIT)" ./scripts/init-proxmox-ssh.sh "$(SSH_CONFIG)" $$args
 
 ## Check required local tools, and remote tools if config exists
 check-tools:

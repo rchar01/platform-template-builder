@@ -50,14 +50,14 @@ IMAGE_PROFILE="configs/images/rocky-9.env"
 - Virtio network.
 - SCSI disk.
 - `virtio-scsi-pci` controller.
-- Serial console.
+- VGA/noVNC console with a serial port attached by default.
 - Cloud-init drive.
 - QEMU guest agent enabled.
 - Proxmox cloud-init type `nocloud`.
 
 ## Guest Preparation
 
-Prepared templates install and enable guest-side services before the disk is imported into Proxmox:
+Safe guest preparation preserves the upstream cloud image package/service state, verifies basic boot files, and aligns kernel console arguments with `TEMPLATE_CONSOLE_MODE` when `grubby` is available before the disk is imported into Proxmox. Full guest preparation is available for testing and attempts to install and enable guest-side services before import:
 
 - `cloud-init` and the standard cloud-init systemd units.
 - `qemu-guest-agent` and `qemu-guest-agent.service`.
@@ -65,4 +65,6 @@ Prepared templates install and enable guest-side services before the disk is imp
 - NetworkManager for virtio NIC configuration from Proxmox cloud-init data.
 - `serial-getty@ttyS0.service` for serial-console login.
 
-Guest preparation also removes stale cloud-init state, SSH host keys, NetworkManager connection profiles, non-loopback legacy network-scripts profiles, cloud-init logs, and machine identity files. The template conversion happens only after this preparation succeeds.
+Full guest preparation also removes stale cloud-init state, SSH host keys, NetworkManager connection profiles, non-loopback legacy network-scripts profiles, cloud-init logs, and machine identity files. The template conversion happens only after the selected preparation mode succeeds.
+
+Use `TEMPLATE_CONSOLE_MODE="vga-serial"` by default so noVNC remains useful when networking or QEMU guest agent startup fails. `TEMPLATE_CONSOLE_MODE="serial"` sets `vga: serial0` and should only be used once serial-only behavior is verified for that image.

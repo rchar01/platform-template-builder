@@ -72,6 +72,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Private `configs/ssh/*.env` files are ignored and must not be committed.
 - Real config values may live outside this repository in `platform-private`; keep committed files here as examples only.
 - Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`. Include `IMAGE_OS_FAMILY` so guest preparation can choose package and service names.
+- Template configs should default `TEMPLATE_CONSOLE_MODE` to `vga-serial` so noVNC remains usable when networking or QEMU guest agent startup fails.
 - If adding a new template, add both `configs/<template>-cloud-base.env.example` and `configs/images/<template>.env`, then update `README.md`, `docs/README.md`, and `docs/template-conventions.md`.
 
 ## Verification Notes

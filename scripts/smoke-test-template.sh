@@ -67,6 +67,40 @@ guest_ssh_service() {
   esac
 }
 
+expected_template_vga() {
+  case ${TEMPLATE_CONSOLE_MODE:-vga-serial} in
+    serial) printf '%s\n' 'serial0' ;;
+    vga-serial) printf '%s\n' 'std' ;;
+    *) die "TEMPLATE_CONSOLE_MODE must be one of: serial vga-serial" ;;
+  esac
+}
+
+print_smoke_diagnostics() {
+  if [[ "$SMOKE_VM_CREATED" != "true" ]]; then
+    return 0
+  fi
+
+  warn "Smoke-test VM ${SMOKE_TEST_VMID} diagnostics follow"
+  printf '%s\n' '--- qm status ---'
+  # shellcheck disable=SC2029
+  ssh_transport_ssh "qm status '${SMOKE_TEST_VMID}'" || true
+  printf '%s\n' '--- qm config ---'
+  # shellcheck disable=SC2029
+  ssh_transport_ssh "qm config '${SMOKE_TEST_VMID}'" || true
+  printf '%s\n' '--- cloud-init network ---'
+  # shellcheck disable=SC2029
+  ssh_transport_ssh "qm cloudinit dump '${SMOKE_TEST_VMID}' network" || true
+  printf '%s\n' '--- qemu guest agent ping ---'
+  # shellcheck disable=SC2029
+  ssh_transport_ssh "qm agent '${SMOKE_TEST_VMID}' ping" || true
+}
+
+fail_keep_vm() {
+  SMOKE_TEST_KEEP_FAILED=true
+  print_smoke_diagnostics
+  die "$@"
+}
+
 remote_check_command() {
   local command_name=$1
 
@@ -176,13 +210,14 @@ SMOKE_TEST_DNS=${SMOKE_TEST_DNS:-${SMOKE_TEST_GATEWAY:-}}
 SMOKE_TEST_KEEP_FAILED=${SMOKE_TEST_KEEP_FAILED:-false}
 SMOKE_TEST_CLEANUP=${SMOKE_TEST_CLEANUP:-true}
 SMOKE_TEST_FORCE_RECREATE=${SMOKE_TEST_FORCE_RECREATE:-false}
-SMOKE_TEST_BOOT_TIMEOUT_SECONDS=${SMOKE_TEST_BOOT_TIMEOUT_SECONDS:-300}
+SMOKE_TEST_BOOT_TIMEOUT_SECONDS=${SMOKE_TEST_BOOT_TIMEOUT_SECONDS:-900}
 SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS=${SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS:-180}
 SMOKE_VM_CREATED=false
 SMOKE_TEST_FAILED=true
 REMOTE_PUBLIC_KEY_FILE=''
 LOCAL_PUBLIC_KEY_TEMP=''
 SMOKE_TEST_SSH_SERVICE=$(guest_ssh_service)
+EXPECTED_TEMPLATE_VGA=$(expected_template_vga)
 
 trap cleanup_smoke_vm EXIT
 
@@ -244,7 +279,7 @@ ssh_transport_ssh "qm config '${TEMPLATE_VMID}' | grep -Eq '^citype: nocloud'" |
 # shellcheck disable=SC2029
 ssh_transport_ssh "qm config '${TEMPLATE_VMID}' | grep -Eq '^serial0: socket'" || die "Template VMID ${TEMPLATE_VMID} is missing serial0 socket"
 # shellcheck disable=SC2029
-ssh_transport_ssh "qm config '${TEMPLATE_VMID}' | grep -Eq '^vga: serial0'" || die "Template VMID ${TEMPLATE_VMID} is missing vga serial0"
+ssh_transport_ssh "qm config '${TEMPLATE_VMID}' | grep -Eq '^vga: ${EXPECTED_TEMPLATE_VGA}$'" || die "Template VMID ${TEMPLATE_VMID} is missing vga ${EXPECTED_TEMPLATE_VGA}"
 
 info "Checking smoke-test bridge ${SMOKE_TEST_BRIDGE}"
 # shellcheck disable=SC2029
@@ -273,7 +308,7 @@ SMOKE_VM_CREATED=true
 
 info "Applying smoke-test cloud-init data"
 # shellcheck disable=SC2029
-ssh_transport_ssh "qm set '${SMOKE_TEST_VMID}' --net0 'virtio,bridge=${SMOKE_TEST_BRIDGE}' --agent enabled=1 --citype nocloud --ciuser '${SMOKE_TEST_USER}' --ipconfig0 'ip=${SMOKE_TEST_IPV4},gw=${SMOKE_TEST_GATEWAY}' --nameserver '${SMOKE_TEST_DNS}' --sshkeys \"\$(cat '${REMOTE_PUBLIC_KEY_FILE}')\" >/dev/null"
+ssh_transport_ssh "qm set '${SMOKE_TEST_VMID}' --net0 'virtio,bridge=${SMOKE_TEST_BRIDGE}' --agent enabled=1 --citype nocloud --ciuser '${SMOKE_TEST_USER}' --ipconfig0 'ip=${SMOKE_TEST_IPV4},gw=${SMOKE_TEST_GATEWAY}' --nameserver '${SMOKE_TEST_DNS}' --sshkeys '${REMOTE_PUBLIC_KEY_FILE}' >/dev/null"
 if [[ -n "${SMOKE_TEST_SEARCHDOMAIN:-}" ]]; then
   # shellcheck disable=SC2029
   ssh_transport_ssh "qm set '${SMOKE_TEST_VMID}' --searchdomain '${SMOKE_TEST_SEARCHDOMAIN}' >/dev/null"
@@ -287,21 +322,15 @@ info "Starting smoke-test VM ${SMOKE_TEST_VMID}"
 # shellcheck disable=SC2029
 ssh_transport_ssh "qm start '${SMOKE_TEST_VMID}'"
 
-info "Waiting for QEMU guest agent"
+info "Waiting for Proxmox host to reach ${SMOKE_TEST_IP_ONLY}"
 deadline=$((SECONDS + SMOKE_TEST_BOOT_TIMEOUT_SECONDS))
-until ssh_transport_ssh "qm agent '${SMOKE_TEST_VMID}' ping >/dev/null 2>&1"; do
+until ssh_transport_ssh "ping -c 1 -W 2 '${SMOKE_TEST_IP_ONLY}' >/dev/null 2>&1"; do
   if (( SECONDS >= deadline )); then
-    die "Timed out waiting for qm agent ${SMOKE_TEST_VMID} ping"
+    fail_keep_vm "Timed out waiting for Proxmox host to reach ${SMOKE_TEST_IP_ONLY}; kept VM for console/noVNC debugging"
   fi
   sleep 5
 done
-ok "QEMU guest agent responded"
-
-info "Checking guest IP ${SMOKE_TEST_IP_ONLY}"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm agent '${SMOKE_TEST_VMID}' network-get-interfaces | grep -F '${SMOKE_TEST_IP_ONLY}' >/dev/null" || die "Guest agent did not report ${SMOKE_TEST_IP_ONLY}"
-# shellcheck disable=SC2029
-ssh_transport_ssh "ping -c 1 -W 2 '${SMOKE_TEST_IP_ONLY}' >/dev/null" || die "Proxmox host cannot ping ${SMOKE_TEST_IP_ONLY}"
+ok "Proxmox host can reach ${SMOKE_TEST_IP_ONLY}"
 
 info "Waiting for SSH as ${SMOKE_TEST_USER}@${SMOKE_TEST_IP_ONLY}"
 deadline=$((SECONDS + SMOKE_TEST_BOOT_TIMEOUT_SECONDS))
@@ -314,8 +343,24 @@ done
 ok "SSH login succeeded"
 
 info "Checking cloud-init and guest services"
-guest_ssh_timeout "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" "cloud-init status --wait && systemctl is-active qemu-guest-agent && systemctl is-active '${SMOKE_TEST_SSH_SERVICE}'" >/dev/null
-ok "cloud-init, qemu-guest-agent, and SSH service are healthy"
+guest_ssh_timeout "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" "cloud-init status --wait && systemctl is-active '${SMOKE_TEST_SSH_SERVICE}'" >/dev/null
+ok "cloud-init and SSH service are healthy"
+
+info "Waiting for QEMU guest agent"
+deadline=$((SECONDS + SMOKE_TEST_BOOT_TIMEOUT_SECONDS))
+until ssh_transport_ssh "qm agent '${SMOKE_TEST_VMID}' ping >/dev/null 2>&1"; do
+  if (( SECONDS >= deadline )); then
+    fail_keep_vm "Timed out waiting for qm agent ${SMOKE_TEST_VMID} ping after SSH succeeded; qemu-guest-agent may be missing or stopped"
+  fi
+  sleep 5
+done
+ok "QEMU guest agent responded"
+
+info "Checking guest IP ${SMOKE_TEST_IP_ONLY} through QEMU guest agent"
+# shellcheck disable=SC2029
+ssh_transport_ssh "qm agent '${SMOKE_TEST_VMID}' network-get-interfaces | grep -F '${SMOKE_TEST_IP_ONLY}' >/dev/null" || die "Guest agent did not report ${SMOKE_TEST_IP_ONLY}"
+guest_ssh "systemctl is-active qemu-guest-agent" >/dev/null
+ok "QEMU guest agent service is healthy"
 
 info "Testing graceful shutdown through Proxmox"
 # shellcheck disable=SC2029

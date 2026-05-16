@@ -167,11 +167,11 @@ make smoke-test TEMPLATE=rocky-9 \
 
 Fix: Rebuild the template with guest preparation enabled. The builder installs and enables `qemu-guest-agent` before template conversion, and the smoke test fails if `qm agent <vmid> ping` does not respond.
 
-## Serial Console Has No Login Prompt
+## Console Has No Login Prompt
 
-Symptom: Proxmox serial console opens but no useful login prompt appears.
+Symptom: Proxmox serial console or noVNC opens but no useful boot output or login prompt appears.
 
-Likely cause: The guest did not enable `serial-getty@ttyS0`, kernel console output is not configured, or the VM display is set to serial-only without guest support.
+Likely cause: The guest did not boot, the guest did not enable `serial-getty@ttyS0`, kernel console output is not configured, or the VM display is set to serial-only without guest support.
 
 Check:
 
@@ -179,7 +179,38 @@ Check:
 ssh pve-template-builder 'qm config 9000 | grep -E "^(serial0|vga):"'
 ```
 
-Fix: Rebuild the template with guest preparation enabled. The builder keeps `serial0: socket`, `vga: serial0`, enables `serial-getty@ttyS0.service`, and adds `ttyS0` kernel console arguments when `grubby` is available in the guest image.
+Fix: Rebuild the template with `TEMPLATE_CONSOLE_MODE="vga-serial"` and guest preparation enabled. The builder keeps `serial0: socket`, uses `vga: std` for noVNC debugging, and asks `grubby` to set both `console=tty0` and `console=ttyS0,115200n8` when `grubby` is available in the guest image.
+
+## Guest Kernel Panics Killing Init
+
+Symptom: noVNC shows `Kernel panic - not syncing: Attempted to kill init` during early boot.
+
+Likely cause: Guest image preparation left the clone with broken machine identity, init/systemd state, or SELinux labels.
+
+Check:
+
+```bash
+ssh pve-template-builder 'qm config 9000'
+ssh pve-template-builder 'qm config 9900'
+```
+
+Fix: Rebuild the template with `GUEST_PREP_MODE="safe"`. Safe mode avoids offline package installation, sysprep, machine-id rewrites, and SELinux relabeling so the upstream cloud image package/service state is preserved. Use `GUEST_PREP_MODE="full"` only when testing those invasive customizations separately.
+
+## Smoke Test Times Out Waiting For QEMU Guest Agent
+
+Symptom: `make smoke-test` starts the clone, then fails with `Timed out waiting for qm agent <vmid> ping`.
+
+Likely cause: The guest did not boot, QEMU guest agent failed to start, or first boot is slower than the smoke-test timeout.
+
+Check:
+
+```bash
+ssh pve-template-builder 'qm config 9900'
+ssh pve-template-builder 'qm status 9900'
+ssh pve-template-builder 'qm agent 9900 ping'
+```
+
+Fix: The smoke test keeps QGA-timeout VMs automatically. Open noVNC for the kept VM, inspect boot output, and rerun with `SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900` or higher only if the guest is booting normally but slowly.
 
 ## Smoke-Test VMID Already Exists
 

@@ -149,4 +149,4 @@ make smoke-test TEMPLATE=rocky-9 \
   SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
-Choose a temporary IP that is not used by workload VMs, DHCP leases, reservations, or other hosts. The default smoke-test VMID is `9900`, but the script refuses to continue if that VMID already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Failed clones are destroyed by default; set `SMOKE_TEST_KEEP_FAILED=true` to keep one for serial or noVNC debugging.
+Choose a temporary IP that is not used by workload VMs, DHCP leases, reservations, or other hosts. The default smoke-test VMID is `9900`, but the script refuses to continue if that VMID already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Failed clones are destroyed by default except QEMU guest-agent timeouts, which print diagnostics and keep the VM automatically for noVNC/console debugging. The default boot wait is `SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900`.

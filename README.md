@@ -238,7 +238,9 @@ Proxmox node:
 
 `virt-customize` and `virt-sysprep` are provided by `libguestfs-tools` on Proxmox/Debian. Installing that package may pull a sizable dependency set.
 
-Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"`. Set it to `false` only for temporary troubleshooting; unprepared templates may not have working cloud-init networking, SSH, QEMU guest agent, or serial console support inside clones.
+Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP_MODE="safe"`. Safe mode copies the upstream image, verifies basic boot files, and aligns kernel console arguments with `TEMPLATE_CONSOLE_MODE` when `grubby` is available. It does not perform offline package installation, service enablement, sysprep, machine-id rewrites, or SELinux relabeling. `GUEST_PREP_MODE="full"` keeps the more invasive offline customization path for later testing.
+
+Template console mode defaults to `TEMPLATE_CONSOLE_MODE="vga-serial"`, which keeps a serial port attached but uses normal VGA/noVNC output for debugging. Set `TEMPLATE_CONSOLE_MODE="serial"` only after serial-only guest console behavior is proven for the image.
 
 See `docs/proxmox-requirements.md` for detailed checks.
 
@@ -312,7 +314,7 @@ make cleanup TEMPLATE=rocky-9
 
 `make check-tools` checks local tools first. If `configs/<TEMPLATE>-cloud-base.env` exists, it also checks the configured Proxmox host over SSH.
 
-`make smoke-test` clones a temporary VM from the template, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks cloud-init and guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Use `SMOKE_TEST_KEEP_FAILED=true` to retain a failed clone for debugging.
+`make smoke-test` clones a temporary VM from the template, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks cloud-init and guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. QEMU guest-agent timeouts print Proxmox diagnostics and keep the failed VM automatically for noVNC/console debugging.
 
 The generic Make targets resolve configs as:
 

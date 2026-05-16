@@ -133,6 +133,12 @@ if [[ -n "${GUEST_PREP_TIMEOUT_SECONDS:-}" ]]; then
   is_number "$GUEST_PREP_TIMEOUT_SECONDS" || die "GUEST_PREP_TIMEOUT_SECONDS must be numeric"
   (( GUEST_PREP_TIMEOUT_SECONDS > 0 )) || die "GUEST_PREP_TIMEOUT_SECONDS must be greater than 0"
 fi
+if [[ -n "${TEMPLATE_CONSOLE_MODE:-}" ]]; then
+  require_one_of TEMPLATE_CONSOLE_MODE "$TEMPLATE_CONSOLE_MODE" serial vga-serial
+fi
+if [[ -n "${GUEST_PREP_MODE:-}" ]]; then
+  require_one_of GUEST_PREP_MODE "$GUEST_PREP_MODE" safe full
+fi
 
 require_one_of BIOS_TYPE "$BIOS_TYPE" seabios ovmf
 require_one_of DISK_BUS "$DISK_BUS" scsi
@@ -150,6 +156,7 @@ printf '  Remote dir: %s\n' "$PROXMOX_REMOTE_DIR"
 printf '  Disk storage: %s\n' "$DISK_STORAGE"
 printf '  Cloud-init storage: %s\n' "$CLOUDINIT_STORAGE"
 printf '  Bridge: %s\n' "$BRIDGE"
+printf '  Console mode: %s\n' "${TEMPLATE_CONSOLE_MODE:-vga-serial}"
 printf '\n'
 printf 'Image:\n'
 printf '  Profile: %s\n' "$IMAGE_PROFILE"

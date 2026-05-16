@@ -105,8 +105,10 @@ ssh pve-template-builder 'command -v curl || command -v wget'
 | `MACHINE_TYPE` | Template default | Use `q35`. |
 | `DISK_BUS` | Script-supported value | Use `scsi`; the validation script currently accepts only `scsi`. |
 | `SCSI_CONTROLLER` | Template default | Use `virtio-scsi-pci`. |
-| `ENABLE_QEMU_AGENT` | Local choice | Usually `true`; enables the Proxmox VM setting. Guest image preparation installs and enables the in-guest agent service. |
-| `PREPARE_GUEST_IMAGE` | Build behavior | Usually `true`; installs/enables cloud-init, SSH, QEMU guest agent, NetworkManager, serial getty, and cleans clone identity before import. |
+| `TEMPLATE_CONSOLE_MODE` | Template default | Use `vga-serial` for normal noVNC debugging plus serial port support. Use `serial` only after serial-only console behavior is proven. |
+| `ENABLE_QEMU_AGENT` | Local choice | Usually `true`; enables the Proxmox VM setting. Safe guest prep does not install the in-guest package; smoke testing verifies whether the upstream image already has a working agent. |
+| `PREPARE_GUEST_IMAGE` | Build behavior | Usually `true`; prepares a per-template image copy before import. |
+| `GUEST_PREP_MODE` | Build behavior | Use `safe`; preserves upstream bootability and only runs basic sanity checks. `full` enables invasive offline customization for testing. |
 | `GUEST_PREP_TIMEOUT_SECONDS` | Optional safety override | Defaults to `1800`; bounds each `qemu-img`, `virt-customize`, and `virt-sysprep` guest-prep step. |
 | `FORCE_RECREATE` | Safety switch | Keep `false` unless you intentionally want to destroy and recreate the configured `TEMPLATE_VMID`. |
 
@@ -148,7 +150,8 @@ make smoke-test TEMPLATE=rocky-10.1 \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
   SMOKE_TEST_DNS=<dns-ip> \
-  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
+  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key> \
+  SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900
 ```
 
 Verify the resulting template on Proxmox:
