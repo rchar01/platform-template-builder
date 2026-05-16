@@ -66,7 +66,7 @@ Use this only if you intentionally want an unencrypted local private key.
 To install the public key on Proxmox when password SSH login already works:
 
 ```bash
-ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@192.168.1.10
+ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@192.168.100.10
 ```
 
 If password SSH login does not work yet, use the Proxmox console or web shell and install the public key manually. First show the public key on this workstation:

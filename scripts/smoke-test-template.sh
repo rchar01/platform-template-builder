@@ -251,8 +251,8 @@ EXPECTED_TEMPLATE_VGA=$(expected_template_vga)
 trap cleanup_smoke_vm EXIT
 
 [[ "$SMOKE_TEST_VMID" =~ ^[0-9]+$ ]] || die "SMOKE_TEST_VMID must be numeric"
-[[ -n "${SMOKE_TEST_IPV4:-}" ]] || die "SMOKE_TEST_IPV4 is required, for example 192.168.20.250/24"
-is_ipv4_cidr "$SMOKE_TEST_IPV4" || die "SMOKE_TEST_IPV4 must use IPv4 CIDR format, for example 192.168.20.250/24"
+[[ -n "${SMOKE_TEST_IPV4:-}" ]] || die "SMOKE_TEST_IPV4 is required, for example <temporary-ip/cidr>"
+is_ipv4_cidr "$SMOKE_TEST_IPV4" || die "SMOKE_TEST_IPV4 must use IPv4 CIDR format, for example <temporary-ip/cidr>"
 [[ -n "${SMOKE_TEST_GATEWAY:-}" ]] || die "SMOKE_TEST_GATEWAY is required"
 [[ -n "${SMOKE_TEST_DNS:-}" ]] || die "SMOKE_TEST_DNS is required"
 [[ -n "${SMOKE_TEST_SSH_KEY:-}" ]] || die "SMOKE_TEST_SSH_KEY is required"
