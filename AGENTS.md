@@ -65,7 +65,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 ## Config And Makefile Conventions
 
 - Keep Make targets generic; do not re-add OS-specific convenience targets like `build-rocky-9`.
-- `CONFIG_ROOT ?= configs` allows private config roots such as `../platform-private/template-builder/configs`.
+- `CONFIG_ROOT ?= configs` allows private config roots such as `../platform-private/template-builder`.
 - `TEMPLATE ?= rocky-9` resolves to `CONFIG ?= $(CONFIG_ROOT)/$(TEMPLATE)-cloud-base.env`.
 - `SSH_CONFIG ?= $(CONFIG_ROOT)/ssh/template-builder.env` resolves the private SSH bootstrap config for `make init-ssh` and the default SSH transport for `check-tools`, `build`, `smoke-test`, and `cleanup` when the file exists.
 - `PLATFORM_SSH_INIT ?= platform-ssh-init` resolves the optional shared SSH helper from `platform-tools`; template builds must not depend on it.

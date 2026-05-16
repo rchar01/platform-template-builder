@@ -98,7 +98,7 @@ Use this flow for real homelab or production configs. Keep real `.env` files in 
 Expected private layout:
 
 ```text
-../platform-private/template-builder/configs/
+../platform-private/template-builder/
   rocky-10.1-cloud-base.env
   ssh/template-builder.env
 ```
@@ -115,19 +115,19 @@ make -C ../platform-tools install
 # clone or place your private config repo as ../platform-private
 # git clone <your-platform-private-url> ../platform-private
 
-# ensure ../platform-private/template-builder/configs exists with real values
-make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+# ensure ../platform-private/template-builder exists with real values
+make init-ssh CONFIG_ROOT=../platform-private/template-builder
 
 # run the ssh-copy-id command printed by make init-ssh, for example:
 ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@<proxmox-ip>
-make init-ssh SSH_TEST=1 CONFIG_ROOT=../platform-private/template-builder/configs
+make init-ssh SSH_TEST=1 CONFIG_ROOT=../platform-private/template-builder
 
-make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
-make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
-make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
+make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
+make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
 
 # choose a temporary IP that does not conflict with platform-infra VMs
-make smoke-test TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs \
+make smoke-test TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
   SMOKE_TEST_DNS=<dns-ip> \
@@ -139,7 +139,7 @@ If you do not want to install `platform-tools`, run the helper from a sibling ch
 ```bash
 make init-ssh \
   PLATFORM_SSH_INIT=../platform-tools/bin/platform-ssh-init \
-  CONFIG_ROOT=../platform-private/template-builder/configs
+  CONFIG_ROOT=../platform-private/template-builder
 ```
 
 ## SSH Bootstrap
@@ -260,7 +260,7 @@ Private `.env` files are ignored and must not be committed.
 For real homelab or production use, keep private configs outside this public repository, for example in `platform-private`:
 
 ```text
-../platform-private/template-builder/configs/
+../platform-private/template-builder/
   rocky-10.1-cloud-base.env
   ssh/template-builder.env
 ```
@@ -268,15 +268,15 @@ For real homelab or production use, keep private configs outside this public rep
 Use that private config root with:
 
 ```bash
-make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
-make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
-make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
+make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
+make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
 ```
 
 You can also point at one explicit config file:
 
 ```bash
-make build CONFIG=../platform-private/template-builder/configs/rocky-10.1-cloud-base.env
+make build CONFIG=../platform-private/template-builder/rocky-10.1-cloud-base.env
 ```
 
 SSH bootstrap uses a separate private config copied from `configs/ssh/template-builder.env.example` to `$(CONFIG_ROOT)/ssh/template-builder.env`.
@@ -286,7 +286,7 @@ The SSH bootstrap helper is optional. CI/CD or manually configured workstations 
 When using a private config root, the same root is used for SSH bootstrap:
 
 ```bash
-make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+make init-ssh CONFIG_ROOT=../platform-private/template-builder
 ```
 
 For a variable-by-variable guide to filling in private template configs, see `docs/template-config-reference.md`.

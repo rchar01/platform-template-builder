@@ -48,7 +48,7 @@ make init-ssh
 For real homelab use, the SSH bootstrap config may live in `platform-private` and be selected with `CONFIG_ROOT`:
 
 ```bash
-make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+make init-ssh CONFIG_ROOT=../platform-private/template-builder
 ```
 
 The helper loads the configured SSH bootstrap file from `SSH_CONFIG`, which defaults to `$(CONFIG_ROOT)/ssh/template-builder.env`. It creates a dedicated ed25519 key at the configured `SSH_KEY_PATH` if missing, prints an SSH config block, and prints the `ssh-copy-id` command to install the public key on Proxmox. By default, `ssh-keygen` prompts for a key passphrase. The helper does not install the key automatically, create Proxmox users, create API tokens, or write to `~/.ssh/config` unless `SSH_WRITE_CONFIG=1` is set. Build automation reads this same file directly, so writing `~/.ssh/config` is optional.

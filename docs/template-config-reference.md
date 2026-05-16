@@ -40,7 +40,7 @@ make smoke-test TEMPLATE=rocky-10.1 \
 For real homelab or production use, prefer storing private configs in `platform-private` and point Make at them with `CONFIG_ROOT` or `CONFIG`:
 
 ```text
-../platform-private/template-builder/configs/
+../platform-private/template-builder/
   rocky-10.1-cloud-base.env
   ssh/template-builder.env
 ```
@@ -49,17 +49,17 @@ For real homelab or production use, prefer storing private configs in `platform-
 # clone or place your private config repo as ../platform-private
 # git clone <your-platform-private-url> ../platform-private
 
-make init-ssh CONFIG_ROOT=../platform-private/template-builder/configs
+make init-ssh CONFIG_ROOT=../platform-private/template-builder
 
 # run the ssh-copy-id command printed by make init-ssh, for example:
 ssh-copy-id -i ~/.ssh/platform-template-builder_ed25519.pub root@<proxmox-ip>
-make init-ssh SSH_TEST=1 CONFIG_ROOT=../platform-private/template-builder/configs
+make init-ssh SSH_TEST=1 CONFIG_ROOT=../platform-private/template-builder
 
-make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
-make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
-make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs
+make validate TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
+make check-tools TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
+make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
 
-make smoke-test TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder/configs \
+make smoke-test TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
   SMOKE_TEST_DNS=<dns-ip> \
