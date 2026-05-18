@@ -2,10 +2,13 @@
 
 This file gives a short, release-oriented view of what changed between versions.
 
-## Unreleased
+## v1.3.0 - 2026-05-17
 
-- Example guest configs now consistently include the guest-prep timeout default, and the SSH bootstrap example keeps its test command focused on Proxmox reachability.
 - Added a `platform-infra` handoff note for OpenTofu agents cloning validated templates downstream.
+- Added branded forge avatar assets and icon token CSS under `assets/brand/`, and displayed the transparent avatar in the README.
+- Example guest configs now consistently include the guest-prep timeout default, and the SSH bootstrap example keeps its test command focused on Proxmox reachability.
+- Public examples now use the `192.168.100.x` documentation range instead of real-looking local network addresses.
+- Private template-builder docs now use the flattened `../platform-private/template-builder` config root layout.
 
 ## v1.2.0 - 2026-05-16
 

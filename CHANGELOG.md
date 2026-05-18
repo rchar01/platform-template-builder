@@ -7,13 +7,18 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-17
+
 ### Added
 
 - `platform-infra` handoff documentation for OpenTofu agents that clone validated templates downstream.
+- Branded forge avatar assets and icon token CSS under `assets/brand/`, and README branding that displays the transparent avatar.
 
 ### Changed
 
 - Example guest configs now consistently include `GUEST_PREP_TIMEOUT_SECONDS="1800"`, and the SSH bootstrap example now uses a minimal Proxmox reachability test instead of duplicating `make check-tools` checks.
+- Public examples now use the `192.168.100.x` documentation range instead of real-looking local network addresses.
+- Private template-builder documentation now uses the flattened `../platform-private/template-builder` config root layout.
 
 ## [1.2.0] - 2026-05-16
 
