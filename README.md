@@ -301,7 +301,7 @@ Template configs reference committed image profiles under `configs/images/`:
 IMAGE_PROFILE="configs/images/rocky-9.env"
 ```
 
-Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, optional `IMAGE_SHA256`, `IMAGE_OS_FAMILY`, and the default cloud-init user for that OS.
+Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, exactly one required checksum (`IMAGE_SHA256` or `IMAGE_SHA512`), `IMAGE_OS_FAMILY`, and the default cloud-init user for that OS.
 
 ## Usage
 

@@ -14,7 +14,7 @@ This project builds templates by SSHing to a Proxmox node and running local Prox
 - Proxmox node has internet access, or the image is already cached under `.cache/images/`.
 - The SSH user can write to `PROXMOX_REMOTE_DIR`.
 
-If `IMAGE_SHA256` is set in a profile under `configs/images/`, the Proxmox node also needs `sha256sum`.
+The Proxmox node also needs `sha256sum` or `sha512sum`, matching the required checksum field in the selected image profile. Builds fail before import if the downloaded or cached image does not match the profile checksum.
 
 `virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian and are required for the default `GUEST_PREP_MODE="full"`. Install it on the template build host before building full-prep templates. It may pull a sizable dependency set. Missing tools fail early with messages such as `virt-customize not found; install libguestfs-tools on the template build host.` Guest-prep commands are bounded by `GUEST_PREP_TIMEOUT_SECONDS`, which defaults to `1800` seconds per step. Set `GUEST_PREP_MODE="safe"` only for copy-only troubleshooting.
 

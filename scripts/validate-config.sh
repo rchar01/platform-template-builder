@@ -23,6 +23,22 @@ is_bool() {
   [[ "$1" == "true" || "$1" == "false" ]]
 }
 
+is_sha256() {
+  [[ "$1" =~ ^[A-Fa-f0-9]{64}$ ]]
+}
+
+is_sha512() {
+  [[ "$1" =~ ^[A-Fa-f0-9]{128}$ ]]
+}
+
+is_safe_remote_dir() {
+  [[ "$1" =~ ^/[A-Za-z0-9._/-]+$ ]] || return 1
+  case $1 in
+    *'//'* | *'/./'* | *'/../'* | *'/.' | *'/..') return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
 require_var() {
   local name=$1
   if [[ -z "${!name:-}" ]]; then
@@ -126,6 +142,7 @@ is_number "$MEMORY_MB" || die "MEMORY_MB must be numeric"
 
 is_bool "$ENABLE_QEMU_AGENT" || die "ENABLE_QEMU_AGENT must be true or false"
 is_bool "$FORCE_RECREATE" || die "FORCE_RECREATE must be true or false"
+is_safe_remote_dir "$PROXMOX_REMOTE_DIR" || die "PROXMOX_REMOTE_DIR must be an absolute path with safe characters and no dot path segments"
 if [[ -n "${PREPARE_GUEST_IMAGE:-}" ]]; then
   is_bool "$PREPARE_GUEST_IMAGE" || die "PREPARE_GUEST_IMAGE must be true or false"
 fi
@@ -143,6 +160,17 @@ fi
 require_one_of BIOS_TYPE "$BIOS_TYPE" seabios ovmf
 require_one_of DISK_BUS "$DISK_BUS" scsi
 require_one_of IMAGE_OS_FAMILY "$IMAGE_OS_FAMILY" debian rhel
+
+checksum_count=0
+if [[ -n "${IMAGE_SHA256:-}" ]]; then
+  is_sha256 "$IMAGE_SHA256" || die "IMAGE_SHA256 must be a 64-character hexadecimal sha256 digest"
+  checksum_count=$((checksum_count + 1))
+fi
+if [[ -n "${IMAGE_SHA512:-}" ]]; then
+  is_sha512 "$IMAGE_SHA512" || die "IMAGE_SHA512 must be a 128-character hexadecimal sha512 digest"
+  checksum_count=$((checksum_count + 1))
+fi
+(( checksum_count == 1 )) || die "Set exactly one image checksum: IMAGE_SHA256 or IMAGE_SHA512"
 
 ok "Template config valid"
 printf '\n'

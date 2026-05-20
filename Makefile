@@ -8,6 +8,8 @@ SSH_CONFIG ?= $(CONFIG_ROOT)/ssh/template-builder.env
 PLATFORM_SSH_INIT ?= platform-ssh-init
 SMOKE_TEST_VMID ?= 9900
 
+export SSH_EMPTY_PASSPHRASE SSH_WRITE_CONFIG SSH_TEST SSH_PRINT_PUBLIC_KEY
+
 .PHONY: help verify syntax shellcheck init-ssh check-tools \
 	validate build smoke-test cleanup-smoke-test cleanup \
 	check-config check-ssh-config
@@ -42,10 +44,16 @@ verify: syntax
 ## Initialize local SSH key/config for Proxmox template builds
 init-ssh: check-ssh-config
 	@args=''; \
-	if [ -n "$(SSH_EMPTY_PASSPHRASE)" ]; then args="$$args --empty-passphrase"; fi; \
-	if [ -n "$(SSH_WRITE_CONFIG)" ]; then args="$$args --write-config"; fi; \
-	if [ -n "$(SSH_TEST)" ]; then args="$$args --test"; fi; \
-	if [ -n "$(SSH_PRINT_PUBLIC_KEY)" ]; then args="$$args --print-public-key"; fi; \
+	is_truthy() { \
+		case "$$1" in \
+			1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn]) return 0 ;; \
+			*) return 1 ;; \
+		esac; \
+	}; \
+	if is_truthy "$${SSH_EMPTY_PASSPHRASE:-}"; then args="$$args --empty-passphrase"; fi; \
+	if is_truthy "$${SSH_WRITE_CONFIG:-}"; then args="$$args --write-config"; fi; \
+	if is_truthy "$${SSH_TEST:-}"; then args="$$args --test"; fi; \
+	if is_truthy "$${SSH_PRINT_PUBLIC_KEY:-}"; then args="$$args --print-public-key"; fi; \
 	PLATFORM_SSH_INIT="$(PLATFORM_SSH_INIT)" ./scripts/init-proxmox-ssh.sh "$(SSH_CONFIG)" $$args
 
 ## Check required local tools, and remote tools if config exists

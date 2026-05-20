@@ -6,6 +6,8 @@ This file gives a short, release-oriented view of what changed between versions.
 
 - Guest preparation now defaults to full offline customization, and examples use `GUEST_PREP_MODE="full"` so clones regenerate unique cloud-init state, machine identity, and SSH host keys.
 - Safe guest preparation remains available as a copy-only troubleshooting mode.
+- Image profiles now require a SHA-256 or SHA-512 checksum, and builds verify downloaded or cached cloud images before import.
+- Smoke-test, cleanup, and SSH bootstrap inputs now reject or quote values that could otherwise be interpreted as shell syntax.
 
 ## v1.3.0 - 2026-05-17
 

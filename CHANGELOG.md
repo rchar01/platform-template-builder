@@ -11,6 +11,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Guest preparation now defaults to `GUEST_PREP_MODE="full"`, and committed examples use full prep so clone templates clear stale cloud-init state, SSH host keys, network profiles, logs, and machine identity before import.
 - Documentation now treats safe guest preparation as a copy-only troubleshooting mode instead of the recommended default.
+- Image profiles now require exactly one checksum, `IMAGE_SHA256` or `IMAGE_SHA512`, and builds verify downloaded or cached cloud images before import.
+- Smoke-test, cleanup, and SSH bootstrap inputs now use stricter validation or shell-safe argument handling to prevent command injection through config or Make variables.
 
 ## [1.3.0] - 2026-05-17
 

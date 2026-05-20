@@ -67,6 +67,9 @@ destroy_existing_vm() {
 }
 
 download_image() {
+  local checksum_tool
+  local checksum_value
+
   mkdir -p "$IMAGE_CACHE_DIR"
 
   if [[ -f "$IMAGE_PATH" ]]; then
@@ -84,10 +87,18 @@ download_image() {
   fi
 
   if [[ -n "${IMAGE_SHA256:-}" ]]; then
-    command_exists sha256sum || die "IMAGE_SHA256 is set, but sha256sum is unavailable"
-    printf '%s  %s\n' "$IMAGE_SHA256" "$IMAGE_PATH" | sha256sum -c - >/dev/null
-    ok "Image checksum verified"
+    checksum_tool=sha256sum
+    checksum_value=$IMAGE_SHA256
+  elif [[ -n "${IMAGE_SHA512:-}" ]]; then
+    checksum_tool=sha512sum
+    checksum_value=$IMAGE_SHA512
+  else
+    die "Set IMAGE_SHA256 or IMAGE_SHA512 before importing cloud images"
   fi
+
+  command_exists "$checksum_tool" || die "${checksum_tool} is required for image checksum verification"
+  printf '%s  %s\n' "$checksum_value" "$IMAGE_PATH" | "$checksum_tool" -c - >/dev/null
+  ok "Image checksum verified with ${checksum_tool}"
 }
 
 attach_imported_disk() {

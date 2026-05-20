@@ -198,6 +198,11 @@ check_remote_any "image download" curl wget
 
 if [[ -n "${IMAGE_SHA256:-}" ]]; then
   check_remote_command sha256sum
+elif [[ -n "${IMAGE_SHA512:-}" ]]; then
+  check_remote_command sha512sum
+else
+  error "Set IMAGE_SHA256 or IMAGE_SHA512 before importing cloud images"
+  MISSING=1
 fi
 
 check_remote_proxmox_marker

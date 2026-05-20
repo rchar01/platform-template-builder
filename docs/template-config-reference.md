@@ -133,7 +133,7 @@ Image profiles are committed files under `configs/images/`. Template configs ref
 |---|---|
 | `IMAGE_URL` | Committed image profile. |
 | `IMAGE_NAME` | Committed image profile. |
-| `IMAGE_SHA256` | Committed image profile when upstream provides a checksum. |
+| `IMAGE_SHA256` / `IMAGE_SHA512` | Committed image profile; exactly one is required and is verified before image import. |
 | `IMAGE_OS_FAMILY` | Committed image profile; currently `rhel` or `debian` for guest preparation package/service names. |
 | `CLOUDINIT_USER` | Committed image profile default for the OS. |
 

@@ -72,7 +72,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Private `configs/*-cloud-base.env` files are ignored and must not be committed.
 - Private `configs/ssh/*.env` files are ignored and must not be committed.
 - Real config values may live outside this repository in `platform-private`; keep committed files here as examples only.
-- Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`. Include `IMAGE_OS_FAMILY` so guest preparation can choose package and service names.
+- Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`. Include `IMAGE_OS_FAMILY` so guest preparation can choose package and service names, and exactly one checksum field (`IMAGE_SHA256` or `IMAGE_SHA512`) so builds verify images before import.
 - Template configs should default `TEMPLATE_CONSOLE_MODE` to `vga-serial` so noVNC remains usable when networking or QEMU guest agent startup fails.
 - Template configs should default `GUEST_PREP_MODE` to `full` so clones receive fresh cloud-init state, machine identity, and SSH host keys; use `safe` only for copy-only troubleshooting.
 - Rocky/RHEL 10 template configs should set `CPU_TYPE="host"` unless another x86-64-v3-capable Proxmox CPU model is deliberately chosen.

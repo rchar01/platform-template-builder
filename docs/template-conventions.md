@@ -32,10 +32,12 @@ Image profiles define the upstream cloud image source for an operating system:
 ```bash
 IMAGE_URL="https://example.invalid/cloud-image.qcow2"
 IMAGE_NAME="cloud-image.qcow2"
-IMAGE_SHA256=""
+IMAGE_SHA256="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 IMAGE_OS_FAMILY="rhel"
 CLOUDINIT_USER="example"
 ```
+
+Set exactly one checksum field in each image profile: `IMAGE_SHA256` for upstream SHA-256 digests or `IMAGE_SHA512` for upstream SHA-512 digests. Template builds verify the downloaded or cached image before importing it into Proxmox.
 
 Template configs reference profiles with `IMAGE_PROFILE`, for example:
 
