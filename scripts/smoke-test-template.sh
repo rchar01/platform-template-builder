@@ -196,6 +196,7 @@ write_remote_smoke_payload() {
   write_payload_value SMOKE_TEST_BOOT_TIMEOUT_SECONDS "$SMOKE_TEST_BOOT_TIMEOUT_SECONDS"
   write_payload_value EXPECTED_TEMPLATE_VGA "$EXPECTED_TEMPLATE_VGA"
   write_payload_value SMOKE_TEST_PUBLIC_KEY_FILE "$REMOTE_PUBLIC_KEY_FILE_REL"
+  write_payload_value SMOKE_TEST_RUN_ID "$SMOKE_TEST_RUN_ID"
 }
 
 cleanup_remote_smoke_files() {
@@ -355,6 +356,7 @@ else
 fi
 
 LOCAL_PAYLOAD_TEMP=$(mktemp "${TMPDIR:-/tmp}/template-smoke-payload.XXXXXX.env")
+SMOKE_TEST_RUN_ID=${LOCAL_PAYLOAD_TEMP##*/}
 write_remote_smoke_payload
 
 info "Checking SSH access to ${SSH_TRANSPORT_DISPLAY}"

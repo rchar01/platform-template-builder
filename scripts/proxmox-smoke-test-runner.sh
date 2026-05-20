@@ -61,6 +61,10 @@ is_safe_relative_path() {
   esac
 }
 
+is_safe_run_id() {
+  [[ "$1" =~ ^[A-Za-z0-9_.-]+$ ]]
+}
+
 is_safe_vm_name() {
   [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]
 }
@@ -99,7 +103,7 @@ load_payload() {
       TEMPLATE_VMID | SMOKE_TEST_VMID | SMOKE_TEST_NAME | SMOKE_TEST_IPV4 | SMOKE_TEST_GATEWAY | \
         SMOKE_TEST_DNS | SMOKE_TEST_BRIDGE | SMOKE_TEST_USER | SMOKE_TEST_SEARCHDOMAIN | \
         SMOKE_TEST_FORCE_RECREATE | SMOKE_TEST_BOOT_TIMEOUT_SECONDS | EXPECTED_TEMPLATE_VGA | \
-        SMOKE_TEST_PUBLIC_KEY_FILE)
+        SMOKE_TEST_PUBLIC_KEY_FILE | SMOKE_TEST_RUN_ID)
         printf -v "$key" '%s' "$value"
         ;;
       *)
@@ -110,6 +114,7 @@ load_payload() {
 }
 
 validate_payload() {
+  local payload_dir
   local required
 
   for required in \
@@ -124,7 +129,8 @@ validate_payload() {
     SMOKE_TEST_FORCE_RECREATE \
     SMOKE_TEST_BOOT_TIMEOUT_SECONDS \
     EXPECTED_TEMPLATE_VGA \
-    SMOKE_TEST_PUBLIC_KEY_FILE; do
+    SMOKE_TEST_PUBLIC_KEY_FILE \
+    SMOKE_TEST_RUN_ID; do
     require_var "$required"
   done
 
@@ -140,6 +146,7 @@ validate_payload() {
   is_number "$SMOKE_TEST_BOOT_TIMEOUT_SECONDS" || die "SMOKE_TEST_BOOT_TIMEOUT_SECONDS must be numeric"
   (( SMOKE_TEST_BOOT_TIMEOUT_SECONDS > 0 )) || die "SMOKE_TEST_BOOT_TIMEOUT_SECONDS must be greater than 0"
   is_safe_relative_path "$SMOKE_TEST_PUBLIC_KEY_FILE" || die "SMOKE_TEST_PUBLIC_KEY_FILE must be a safe relative path"
+  is_safe_run_id "$SMOKE_TEST_RUN_ID" || die "SMOKE_TEST_RUN_ID must be a safe identifier"
   if [[ "$ACTION" == "prepare" ]]; then
     [[ -f "$SMOKE_TEST_PUBLIC_KEY_FILE" ]] || die "Smoke-test public key file not found: ${SMOKE_TEST_PUBLIC_KEY_FILE}"
   fi
@@ -154,6 +161,11 @@ validate_payload() {
   fi
 
   SMOKE_TEST_IP_ONLY=${SMOKE_TEST_IPV4%%/*}
+  case $PAYLOAD_FILE in
+    */*) payload_dir=${PAYLOAD_FILE%/*} ;;
+    *) payload_dir=. ;;
+  esac
+  SMOKE_TEST_OWNERSHIP_MARKER=${payload_dir}/created.marker
 }
 
 remote_check_command() {
@@ -170,13 +182,73 @@ check_required_commands() {
   done
 }
 
-destroy_smoke_vm() {
+write_ownership_marker() {
+  {
+    printf 'MARKER_VERSION=1\n'
+    printf 'TEMPLATE_VMID=%s\n' "$TEMPLATE_VMID"
+    printf 'SMOKE_TEST_VMID=%s\n' "$SMOKE_TEST_VMID"
+    printf 'SMOKE_TEST_NAME=%s\n' "$SMOKE_TEST_NAME"
+    printf 'SMOKE_TEST_RUN_ID=%s\n' "$SMOKE_TEST_RUN_ID"
+  } >"$SMOKE_TEST_OWNERSHIP_MARKER"
+}
+
+marker_matches_payload() {
+  local marker_version=''
+  local marker_template_vmid=''
+  local marker_smoke_test_name=''
+  local marker_smoke_test_run_id=''
+  local marker_smoke_test_vmid=''
+  local key
+  local line
+  local value
+
+  [[ -f "$SMOKE_TEST_OWNERSHIP_MARKER" ]] || return 1
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -n "$line" ]] || continue
+    [[ "$line" == *=* ]] || return 1
+    key=${line%%=*}
+    value=${line#*=}
+
+    case $key in
+      MARKER_VERSION) marker_version=$value ;;
+      TEMPLATE_VMID) marker_template_vmid=$value ;;
+      SMOKE_TEST_VMID) marker_smoke_test_vmid=$value ;;
+      SMOKE_TEST_NAME) marker_smoke_test_name=$value ;;
+      SMOKE_TEST_RUN_ID) marker_smoke_test_run_id=$value ;;
+      *) return 1 ;;
+    esac
+  done <"$SMOKE_TEST_OWNERSHIP_MARKER"
+
+  [[ "$marker_version" == "1" && \
+    "$marker_template_vmid" == "$TEMPLATE_VMID" && \
+    "$marker_smoke_test_vmid" == "$SMOKE_TEST_VMID" && \
+    "$marker_smoke_test_name" == "$SMOKE_TEST_NAME" && \
+    "$marker_smoke_test_run_id" == "$SMOKE_TEST_RUN_ID" ]]
+}
+
+destroy_existing_smoke_vmid_for_force_recreate() {
   qm status "$SMOKE_TEST_VMID" >/dev/null 2>&1 || return 0
   qm stop "$SMOKE_TEST_VMID" >/dev/null 2>&1 || true
   qm destroy "$SMOKE_TEST_VMID" --purge >/dev/null 2>&1 || true
 }
 
+destroy_created_smoke_vm() {
+  if ! marker_matches_payload; then
+    warn "Skipping cleanup for VMID ${SMOKE_TEST_VMID}; this run did not create it"
+    return 0
+  fi
+
+  destroy_existing_smoke_vmid_for_force_recreate
+  rm -f -- "$SMOKE_TEST_OWNERSHIP_MARKER"
+}
+
 print_diagnostics() {
+  if ! marker_matches_payload; then
+    warn "Skipping smoke-test VM diagnostics because this run did not create VMID ${SMOKE_TEST_VMID}"
+    return 0
+  fi
+
   warn "Smoke-test VM ${SMOKE_TEST_VMID} diagnostics follow"
   if ! qm status "$SMOKE_TEST_VMID" >/dev/null 2>&1; then
     warn "Smoke-test VM ${SMOKE_TEST_VMID} does not exist"
@@ -195,6 +267,7 @@ print_diagnostics() {
 
 prepare_smoke_vm() {
   check_required_commands
+  rm -f -- "$SMOKE_TEST_OWNERSHIP_MARKER"
 
   info "Checking template VMID ${TEMPLATE_VMID}"
   qm status "$TEMPLATE_VMID" >/dev/null 2>&1 || die "Template VMID ${TEMPLATE_VMID} does not exist"
@@ -214,11 +287,12 @@ prepare_smoke_vm() {
     fi
 
     warn "SMOKE_TEST_FORCE_RECREATE=true; destroying existing VMID ${SMOKE_TEST_VMID}"
-    destroy_smoke_vm
+    destroy_existing_smoke_vmid_for_force_recreate
   fi
 
   info "Cloning template ${TEMPLATE_VMID} to smoke-test VM ${SMOKE_TEST_VMID} (${SMOKE_TEST_NAME})"
   qm clone "$TEMPLATE_VMID" "$SMOKE_TEST_VMID" --name "$SMOKE_TEST_NAME" --full 1
+  write_ownership_marker
 
   info "Applying smoke-test cloud-init data"
   qm set "$SMOKE_TEST_VMID" \
@@ -298,6 +372,6 @@ case $ACTION in
   diagnostics) print_diagnostics ;;
   qga-check) check_qga ;;
   shutdown) shutdown_smoke_vm ;;
-  cleanup) destroy_smoke_vm ;;
+  cleanup) destroy_created_smoke_vm ;;
   *) usage; exit 2 ;;
 esac

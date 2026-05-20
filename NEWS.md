@@ -4,6 +4,8 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
+- Smoke-test diagnostics and cleanup now require a per-run ownership marker before acting on the configured smoke-test VMID, so pre-existing VMs are not inspected or cleaned up after a failed smoke-test `prepare` step.
+
 ## v1.4.0 - 2026-05-20
 
 - Guest preparation now defaults to full offline customization, and examples use `GUEST_PREP_MODE="full"` so clones regenerate unique cloud-init state, machine identity, and SSH host keys.
