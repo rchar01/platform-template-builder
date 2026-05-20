@@ -181,6 +181,7 @@ remote_required=(
   qm
   pvesm
   ip
+  ping
   rsync
   awk
   grep

@@ -102,36 +102,17 @@ expected_template_vga() {
 }
 
 print_smoke_diagnostics() {
-  if [[ "$SMOKE_VM_CREATED" != "true" ]]; then
+  if [[ "$REMOTE_SMOKE_READY" != "true" ]]; then
     return 0
   fi
 
-  warn "Smoke-test VM ${SMOKE_TEST_VMID} diagnostics follow"
-  printf '%s\n' '--- qm status ---'
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm status '${SMOKE_TEST_VMID}'" || true
-  printf '%s\n' '--- qm config ---'
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm config '${SMOKE_TEST_VMID}'" || true
-  printf '%s\n' '--- cloud-init network ---'
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm cloudinit dump '${SMOKE_TEST_VMID}' network" || true
-  printf '%s\n' '--- qemu guest agent ping ---'
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm agent '${SMOKE_TEST_VMID}' ping" || true
+  run_remote_smoke_action diagnostics || true
 }
 
 fail_keep_vm() {
   SMOKE_TEST_KEEP_FAILED=true
   print_smoke_diagnostics
   die "$@"
-}
-
-remote_check_command() {
-  local command_name=$1
-
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "command -v '${command_name}' >/dev/null 2>&1" || die "Remote command missing on ${SSH_TRANSPORT_DISPLAY}: ${command_name}"
 }
 
 guest_ssh() {
@@ -192,35 +173,83 @@ exit "$cloud_init_rc"
 '
 }
 
+write_payload_value() {
+  local key=$1
+  local value=$2
+
+  [[ "$value" != *$'\n'* ]] || die "Payload value for ${key} must not contain newlines"
+  printf '%s=%s\n' "$key" "$value" >>"$LOCAL_PAYLOAD_TEMP"
+}
+
+write_remote_smoke_payload() {
+  : >"$LOCAL_PAYLOAD_TEMP"
+  write_payload_value TEMPLATE_VMID "$TEMPLATE_VMID"
+  write_payload_value SMOKE_TEST_VMID "$SMOKE_TEST_VMID"
+  write_payload_value SMOKE_TEST_NAME "$SMOKE_TEST_NAME"
+  write_payload_value SMOKE_TEST_IPV4 "$SMOKE_TEST_IPV4"
+  write_payload_value SMOKE_TEST_GATEWAY "$SMOKE_TEST_GATEWAY"
+  write_payload_value SMOKE_TEST_DNS "$SMOKE_TEST_DNS"
+  write_payload_value SMOKE_TEST_BRIDGE "$SMOKE_TEST_BRIDGE"
+  write_payload_value SMOKE_TEST_USER "$SMOKE_TEST_USER"
+  write_payload_value SMOKE_TEST_SEARCHDOMAIN "${SMOKE_TEST_SEARCHDOMAIN:-}"
+  write_payload_value SMOKE_TEST_FORCE_RECREATE "$SMOKE_TEST_FORCE_RECREATE"
+  write_payload_value SMOKE_TEST_BOOT_TIMEOUT_SECONDS "$SMOKE_TEST_BOOT_TIMEOUT_SECONDS"
+  write_payload_value EXPECTED_TEMPLATE_VGA "$EXPECTED_TEMPLATE_VGA"
+  write_payload_value SMOKE_TEST_PUBLIC_KEY_FILE "$REMOTE_PUBLIC_KEY_FILE_REL"
+}
+
+cleanup_remote_smoke_files() {
+  # shellcheck disable=SC2029
+  ssh_transport_ssh "rm -rf ${ESC_REMOTE_SMOKE_DIR}" >/dev/null 2>&1 || true
+}
+
+run_remote_smoke_action() {
+  local action=$1
+
+  case $action in
+    prepare | diagnostics | qga-check | shutdown | cleanup) ;;
+    *) die "Unsupported remote smoke-test action: ${action}" ;;
+  esac
+
+  # shellcheck disable=SC2029
+  ssh_transport_ssh "cd ${ESC_PROXMOX_REMOTE_DIR} && ./scripts/proxmox-smoke-test-runner.sh ${ESC_REMOTE_PAYLOAD_FILE} ${action}"
+}
+
+sync_remote_smoke_runner() {
+  info "Syncing smoke-test runner to ${SSH_TRANSPORT_DISPLAY}"
+  # shellcheck disable=SC2029
+  ssh_transport_ssh "mkdir -p ${ESC_REMOTE_SCRIPT_DIR} ${ESC_REMOTE_SMOKE_DIR}"
+  rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${SCRIPT_DIR}/proxmox-smoke-test-runner.sh" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/proxmox-smoke-test-runner.sh"
+  rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "$LOCAL_PAYLOAD_TEMP" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/${REMOTE_PAYLOAD_FILE_REL}"
+  rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "$SMOKE_TEST_PUBLIC_KEY_PATH" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/${REMOTE_PUBLIC_KEY_FILE_REL}"
+  # shellcheck disable=SC2029
+  ssh_transport_ssh "test -x ${ESC_PROXMOX_REMOTE_DIR}/scripts/proxmox-smoke-test-runner.sh" || die "Remote smoke-test runner is not executable on ${SSH_TRANSPORT_DISPLAY}"
+  REMOTE_SMOKE_READY=true
+}
+
 cleanup_smoke_vm() {
-  if [[ -n "${REMOTE_PUBLIC_KEY_FILE:-}" ]]; then
-    # shellcheck disable=SC2029
-    ssh_transport_ssh "rm -f $(shell_quote "$REMOTE_PUBLIC_KEY_FILE")" >/dev/null 2>&1 || true
-  fi
-
   rm -f -- "${LOCAL_PUBLIC_KEY_TEMP:-}"
+  rm -f -- "${LOCAL_PAYLOAD_TEMP:-}"
 
-  if [[ "$SMOKE_VM_CREATED" != "true" ]]; then
+  if [[ "$REMOTE_SMOKE_READY" != "true" ]]; then
     return 0
   fi
 
   if [[ "$SMOKE_TEST_FAILED" == "true" && "$SMOKE_TEST_KEEP_FAILED" == "true" ]]; then
     warn "Keeping failed smoke-test VM ${SMOKE_TEST_VMID} for debugging"
+    cleanup_remote_smoke_files
     return 0
   fi
 
   if [[ "$SMOKE_TEST_CLEANUP" != "true" ]]; then
     warn "Keeping smoke-test VM ${SMOKE_TEST_VMID} because SMOKE_TEST_CLEANUP=false"
+    cleanup_remote_smoke_files
     return 0
   fi
 
   info "Destroying smoke-test VM ${SMOKE_TEST_VMID}"
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm status ${ESC_SMOKE_TEST_VMID} >/dev/null 2>&1" || return 0
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm stop ${ESC_SMOKE_TEST_VMID} >/dev/null 2>&1 || true" || true
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm destroy ${ESC_SMOKE_TEST_VMID} --purge >/dev/null 2>&1 || true" || true
+  run_remote_smoke_action cleanup >/dev/null 2>&1 || true
+  cleanup_remote_smoke_files
 }
 
 if [[ $# -ne 1 ]]; then
@@ -253,6 +282,7 @@ set +a
 command_exists ssh || die "ssh is required"
 command_exists ssh-keygen || die "ssh-keygen is required"
 command_exists mktemp || die "mktemp is required"
+command_exists rsync || die "rsync is required"
 command_exists timeout || die "timeout is required"
 
 ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
@@ -267,10 +297,10 @@ SMOKE_TEST_CLEANUP=${SMOKE_TEST_CLEANUP:-true}
 SMOKE_TEST_FORCE_RECREATE=${SMOKE_TEST_FORCE_RECREATE:-false}
 SMOKE_TEST_BOOT_TIMEOUT_SECONDS=${SMOKE_TEST_BOOT_TIMEOUT_SECONDS:-900}
 SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS=${SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS:-180}
-SMOKE_VM_CREATED=false
+REMOTE_SMOKE_READY=false
 SMOKE_TEST_FAILED=true
-REMOTE_PUBLIC_KEY_FILE=''
 LOCAL_PUBLIC_KEY_TEMP=''
+LOCAL_PAYLOAD_TEMP=''
 SMOKE_TEST_SSH_SERVICE=$(guest_ssh_service)
 EXPECTED_TEMPLATE_VGA=$(expected_template_vga)
 
@@ -298,17 +328,14 @@ is_bool "$SMOKE_TEST_KEEP_FAILED" || die "SMOKE_TEST_KEEP_FAILED must be true or
 is_bool "$SMOKE_TEST_CLEANUP" || die "SMOKE_TEST_CLEANUP must be true or false"
 is_bool "$SMOKE_TEST_FORCE_RECREATE" || die "SMOKE_TEST_FORCE_RECREATE must be true or false"
 
-ESC_TEMPLATE_VMID=$(shell_quote "$TEMPLATE_VMID")
-ESC_SMOKE_TEST_VMID=$(shell_quote "$SMOKE_TEST_VMID")
-ESC_SMOKE_TEST_NAME=$(shell_quote "$SMOKE_TEST_NAME")
-ESC_SMOKE_TEST_BRIDGE=$(shell_quote "$SMOKE_TEST_BRIDGE")
-ESC_SMOKE_TEST_USER=$(shell_quote "$SMOKE_TEST_USER")
-ESC_SMOKE_TEST_DNS=$(shell_quote "$SMOKE_TEST_DNS")
-ESC_SMOKE_TEST_IP_ONLY=$(shell_quote "${SMOKE_TEST_IPV4%%/*}")
-ESC_SMOKE_TEST_NET0=$(shell_quote "virtio,bridge=${SMOKE_TEST_BRIDGE}")
-ESC_SMOKE_TEST_IPCONFIG0=$(shell_quote "ip=${SMOKE_TEST_IPV4},gw=${SMOKE_TEST_GATEWAY}")
-
 SMOKE_TEST_IP_ONLY=${SMOKE_TEST_IPV4%%/*}
+REMOTE_SMOKE_DIR_REL="tmp/smoke-test-${SMOKE_TEST_VMID}"
+REMOTE_PAYLOAD_FILE_REL="${REMOTE_SMOKE_DIR_REL}/payload.env"
+REMOTE_PUBLIC_KEY_FILE_REL="${REMOTE_SMOKE_DIR_REL}/authorized_key.pub"
+ESC_PROXMOX_REMOTE_DIR=$(shell_quote "$PROXMOX_REMOTE_DIR")
+ESC_REMOTE_SCRIPT_DIR=$(shell_quote "${PROXMOX_REMOTE_DIR}/scripts")
+ESC_REMOTE_SMOKE_DIR=$(shell_quote "${PROXMOX_REMOTE_DIR}/${REMOTE_SMOKE_DIR_REL}")
+ESC_REMOTE_PAYLOAD_FILE=$(shell_quote "$REMOTE_PAYLOAD_FILE_REL")
 SMOKE_TEST_SSH_KEY_PATH=$(ssh_transport_expand_path "$SMOKE_TEST_SSH_KEY")
 [[ -f "$SMOKE_TEST_SSH_KEY_PATH" ]] || die "Smoke-test SSH private key not found: ${SMOKE_TEST_SSH_KEY_PATH}"
 if command_exists stat; then
@@ -327,85 +354,15 @@ else
   SMOKE_TEST_PUBLIC_KEY_PATH=$LOCAL_PUBLIC_KEY_TEMP
 fi
 
+LOCAL_PAYLOAD_TEMP=$(mktemp "${TMPDIR:-/tmp}/template-smoke-payload.XXXXXX.env")
+write_remote_smoke_payload
+
 info "Checking SSH access to ${SSH_TRANSPORT_DISPLAY}"
 # shellcheck disable=SC2029
 ssh_transport_ssh 'true' || die "Cannot connect to Proxmox host ${PROXMOX_HOST}"
 
-remote_check_command qm
-remote_check_command ip
-remote_check_command ping
-remote_check_command mktemp
-remote_check_command cat
-remote_check_command grep
-
-info "Checking template VMID ${TEMPLATE_VMID} on ${SSH_TRANSPORT_DISPLAY}"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm status ${ESC_TEMPLATE_VMID} >/dev/null 2>&1" || die "Template VMID ${TEMPLATE_VMID} does not exist"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm config ${ESC_TEMPLATE_VMID} | grep -Eq '^template: 1$'" || die "VMID ${TEMPLATE_VMID} is not a Proxmox template"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm config ${ESC_TEMPLATE_VMID} | grep -Eq '^ide2: .*cloudinit'" || die "Template VMID ${TEMPLATE_VMID} is missing a cloud-init disk"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm config ${ESC_TEMPLATE_VMID} | grep -Eq '^agent: .*enabled=1'" || die "Template VMID ${TEMPLATE_VMID} does not enable the QEMU guest agent"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm config ${ESC_TEMPLATE_VMID} | grep -Eq '^citype: nocloud'" || die "Template VMID ${TEMPLATE_VMID} does not set citype nocloud"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm config ${ESC_TEMPLATE_VMID} | grep -Eq '^serial0: socket'" || die "Template VMID ${TEMPLATE_VMID} is missing serial0 socket"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm config ${ESC_TEMPLATE_VMID} | grep -Eq '^vga: ${EXPECTED_TEMPLATE_VGA}$'" || die "Template VMID ${TEMPLATE_VMID} is missing vga ${EXPECTED_TEMPLATE_VGA}"
-
-info "Checking smoke-test bridge ${SMOKE_TEST_BRIDGE}"
-# shellcheck disable=SC2029
-ssh_transport_ssh "ip link show ${ESC_SMOKE_TEST_BRIDGE} >/dev/null 2>&1" || die "Smoke-test bridge ${SMOKE_TEST_BRIDGE} does not exist"
-
-if ssh_transport_ssh "qm status ${ESC_SMOKE_TEST_VMID} >/dev/null 2>&1"; then
-  if [[ "$SMOKE_TEST_FORCE_RECREATE" != "true" ]]; then
-    die "Smoke-test VMID ${SMOKE_TEST_VMID} already exists; choose another VMID or set SMOKE_TEST_FORCE_RECREATE=true"
-  fi
-
-  warn "SMOKE_TEST_FORCE_RECREATE=true; destroying existing VMID ${SMOKE_TEST_VMID}"
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm stop ${ESC_SMOKE_TEST_VMID} >/dev/null 2>&1 || true"
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm destroy ${ESC_SMOKE_TEST_VMID} --purge"
-fi
-
-REMOTE_PUBLIC_KEY_FILE=$(ssh_transport_ssh "mktemp $(shell_quote '/tmp/template-smoke-key.XXXXXX.pub')")
-ESC_REMOTE_PUBLIC_KEY_FILE=$(shell_quote "$REMOTE_PUBLIC_KEY_FILE")
-# shellcheck disable=SC2029
-ssh "${SSH_TRANSPORT_SSH_ARGS[@]}" "$SSH_TRANSPORT_TARGET" "cat > ${ESC_REMOTE_PUBLIC_KEY_FILE}" <"$SMOKE_TEST_PUBLIC_KEY_PATH"
-
-info "Cloning template ${TEMPLATE_VMID} to smoke-test VM ${SMOKE_TEST_VMID} (${SMOKE_TEST_NAME})"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm clone ${ESC_TEMPLATE_VMID} ${ESC_SMOKE_TEST_VMID} --name ${ESC_SMOKE_TEST_NAME} --full 1"
-SMOKE_VM_CREATED=true
-
-info "Applying smoke-test cloud-init data"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm set ${ESC_SMOKE_TEST_VMID} --net0 ${ESC_SMOKE_TEST_NET0} --agent enabled=1 --citype nocloud --ciuser ${ESC_SMOKE_TEST_USER} --ipconfig0 ${ESC_SMOKE_TEST_IPCONFIG0} --nameserver ${ESC_SMOKE_TEST_DNS} --sshkeys ${ESC_REMOTE_PUBLIC_KEY_FILE} >/dev/null"
-if [[ -n "${SMOKE_TEST_SEARCHDOMAIN:-}" ]]; then
-  ESC_SMOKE_TEST_SEARCHDOMAIN=$(shell_quote "$SMOKE_TEST_SEARCHDOMAIN")
-  # shellcheck disable=SC2029
-  ssh_transport_ssh "qm set ${ESC_SMOKE_TEST_VMID} --searchdomain ${ESC_SMOKE_TEST_SEARCHDOMAIN} >/dev/null"
-fi
-
-info "Dumping generated cloud-init data"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm cloudinit dump ${ESC_SMOKE_TEST_VMID} meta >/dev/null && qm cloudinit dump ${ESC_SMOKE_TEST_VMID} user >/dev/null && qm cloudinit dump ${ESC_SMOKE_TEST_VMID} network >/dev/null"
-
-info "Starting smoke-test VM ${SMOKE_TEST_VMID}"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm start ${ESC_SMOKE_TEST_VMID}"
-
-info "Waiting for Proxmox host to reach ${SMOKE_TEST_IP_ONLY}"
-deadline=$((SECONDS + SMOKE_TEST_BOOT_TIMEOUT_SECONDS))
-until ssh_transport_ssh "ping -c 1 -W 2 ${ESC_SMOKE_TEST_IP_ONLY} >/dev/null 2>&1"; do
-  if (( SECONDS >= deadline )); then
-    fail_keep_vm "Timed out waiting for Proxmox host to reach ${SMOKE_TEST_IP_ONLY}; kept VM for console/noVNC debugging"
-  fi
-  sleep 5
-done
-ok "Proxmox host can reach ${SMOKE_TEST_IP_ONLY}"
+sync_remote_smoke_runner
+run_remote_smoke_action prepare || fail_keep_vm "Remote smoke-test preparation failed; kept VM for console/noVNC debugging"
 
 info "Waiting for SSH as ${SMOKE_TEST_USER}@${SMOKE_TEST_IP_ONLY}"
 deadline=$((SECONDS + SMOKE_TEST_BOOT_TIMEOUT_SECONDS))
@@ -422,28 +379,11 @@ guest_cloud_init_wait "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS"
 guest_ssh_timeout "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" "systemctl is-active '${SMOKE_TEST_SSH_SERVICE}'" >/dev/null
 ok "cloud-init and SSH service are healthy"
 
-info "Waiting for QEMU guest agent"
-deadline=$((SECONDS + SMOKE_TEST_BOOT_TIMEOUT_SECONDS))
-until ssh_transport_ssh "qm agent ${ESC_SMOKE_TEST_VMID} ping >/dev/null 2>&1"; do
-  if (( SECONDS >= deadline )); then
-    fail_keep_vm "Timed out waiting for qm agent ${SMOKE_TEST_VMID} ping after SSH succeeded; qemu-guest-agent may be missing or stopped"
-  fi
-  sleep 5
-done
-ok "QEMU guest agent responded"
-
-info "Checking guest IP ${SMOKE_TEST_IP_ONLY} through QEMU guest agent"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm agent ${ESC_SMOKE_TEST_VMID} network-get-interfaces | grep -F ${ESC_SMOKE_TEST_IP_ONLY} >/dev/null" || die "Guest agent did not report ${SMOKE_TEST_IP_ONLY}"
+run_remote_smoke_action qga-check || fail_keep_vm "QEMU guest-agent checks failed; kept VM for console/noVNC debugging"
 guest_ssh "systemctl is-active qemu-guest-agent" >/dev/null
 ok "QEMU guest agent service is healthy"
 
-info "Testing graceful shutdown through Proxmox"
-# shellcheck disable=SC2029
-ssh_transport_ssh "qm shutdown ${ESC_SMOKE_TEST_VMID} --timeout 120"
-# shellcheck disable=SC2029
-ssh_transport_ssh "i=0; while [ \"\$i\" -lt 120 ]; do if qm status ${ESC_SMOKE_TEST_VMID} | grep -Eq '^status:[[:space:]]+stopped$'; then exit 0; fi; i=\$((i + 1)); sleep 1; done; exit 1" || die "Smoke-test VM ${SMOKE_TEST_VMID} did not shut down cleanly"
-ok "Graceful shutdown succeeded"
+run_remote_smoke_action shutdown
 
 SMOKE_TEST_FAILED=false
 ok "Template smoke test passed"

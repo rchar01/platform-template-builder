@@ -7,7 +7,7 @@ This project builds templates by SSHing to a Proxmox node and running local Prox
 - SSH access to the Proxmox node.
 - A user that can run `qm` and `pvesm` commands.
 - Bash on the Proxmox node.
-- `qm`, `pvesm`, `ip`, `rsync`, `qemu-img`, and either `curl` or `wget`.
+- `qm`, `pvesm`, `ip`, `ping`, `rsync`, `qemu-img`, and either `curl` or `wget`.
 - Target VM disk storage exists.
 - Target cloud-init storage exists.
 - Target Linux bridge exists.
