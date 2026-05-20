@@ -2,6 +2,11 @@
 
 This file gives a short, release-oriented view of what changed between versions.
 
+## Unreleased
+
+- Guest preparation now defaults to full offline customization, and examples use `GUEST_PREP_MODE="full"` so clones regenerate unique cloud-init state, machine identity, and SSH host keys.
+- Safe guest preparation remains available as a copy-only troubleshooting mode.
+
 ## v1.3.0 - 2026-05-17
 
 - Added a `platform-infra` handoff note for OpenTofu agents cloning validated templates downstream.

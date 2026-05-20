@@ -107,9 +107,9 @@ ssh pve-template-builder 'command -v curl || command -v wget'
 | `DISK_BUS` | Script-supported value | Use `scsi`; the validation script currently accepts only `scsi`. |
 | `SCSI_CONTROLLER` | Template default | Use `virtio-scsi-pci`. |
 | `TEMPLATE_CONSOLE_MODE` | Template default | Use `vga-serial` for normal noVNC debugging plus serial port support. Use `serial` only after serial-only console behavior is proven. |
-| `ENABLE_QEMU_AGENT` | Local choice | Usually `true`; enables the Proxmox VM setting. Safe guest prep does not install the in-guest package; smoke testing verifies whether the upstream image already has a working agent. |
+| `ENABLE_QEMU_AGENT` | Local choice | Usually `true`; enables the Proxmox VM setting. Full guest prep installs/enables the in-guest package; smoke testing verifies it responds after clone boot. |
 | `PREPARE_GUEST_IMAGE` | Build behavior | Usually `true`; prepares a per-template image copy before import. |
-| `GUEST_PREP_MODE` | Build behavior | Use `safe`; copies the upstream image without mounting or mutating the guest filesystem. `full` enables invasive offline customization for testing. |
+| `GUEST_PREP_MODE` | Build behavior | Use `full`; prepares clone-ready templates by installing guest services and clearing stale cloud-init, SSH host-key, network, log, and machine identity state. Use `safe` only for copy-only troubleshooting. |
 | `GUEST_PREP_TIMEOUT_SECONDS` | Optional safety override | Defaults to `1800`; bounds each guest-prep step. |
 | `FORCE_RECREATE` | Safety switch | Keep `false` unless you intentionally want to destroy and recreate the configured `TEMPLATE_VMID`. |
 

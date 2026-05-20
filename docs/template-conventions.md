@@ -58,7 +58,7 @@ IMAGE_PROFILE="configs/images/rocky-9.env"
 
 ## Guest Preparation
 
-Safe guest preparation copies the upstream cloud image without mounting or mutating the guest filesystem before the disk is imported into Proxmox. Full guest preparation is available for testing and attempts to install and enable guest-side services before import:
+Full guest preparation is the default. It copies the upstream cloud image, then installs and enables guest-side services before the disk is imported into Proxmox:
 
 - `cloud-init` and the standard cloud-init systemd units.
 - `qemu-guest-agent` and `qemu-guest-agent.service`.
@@ -66,6 +66,8 @@ Safe guest preparation copies the upstream cloud image without mounting or mutat
 - NetworkManager for virtio NIC configuration from Proxmox cloud-init data.
 - `serial-getty@ttyS0.service` for serial-console login.
 
-Full guest preparation also removes stale cloud-init state, SSH host keys, NetworkManager connection profiles, non-loopback legacy network-scripts profiles, cloud-init logs, and machine identity files. The template conversion happens only after the selected preparation mode succeeds.
+Full guest preparation also removes stale cloud-init state, SSH host keys, NetworkManager connection profiles, non-loopback legacy network-scripts profiles, cloud-init logs, and machine identity files. This allows clones to regenerate unique machine identity and SSH host keys on first boot. The template conversion happens only after the selected preparation mode succeeds.
+
+Safe guest preparation remains available for troubleshooting. It only copies the upstream cloud image with `qemu-img` and does not mount or mutate the guest filesystem.
 
 Use `TEMPLATE_CONSOLE_MODE="vga-serial"` by default so noVNC remains useful when networking or QEMU guest agent startup fails. `TEMPLATE_CONSOLE_MODE="serial"` sets `vga: serial0` and should only be used once serial-only behavior is verified for that image.

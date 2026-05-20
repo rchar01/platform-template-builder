@@ -16,7 +16,7 @@ This project builds templates by SSHing to a Proxmox node and running local Prox
 
 If `IMAGE_SHA256` is set in a profile under `configs/images/`, the Proxmox node also needs `sha256sum`.
 
-`virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian and are required only for `GUEST_PREP_MODE="full"`. Install it on the template build host before testing full offline customization. It may pull a sizable dependency set. Missing tools fail early with messages such as `virt-customize not found; install libguestfs-tools on the template build host.` Guest-prep commands are bounded by `GUEST_PREP_TIMEOUT_SECONDS`, which defaults to `1800` seconds per step.
+`virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian and are required for the default `GUEST_PREP_MODE="full"`. Install it on the template build host before building full-prep templates. It may pull a sizable dependency set. Missing tools fail early with messages such as `virt-customize not found; install libguestfs-tools on the template build host.` Guest-prep commands are bounded by `GUEST_PREP_TIMEOUT_SECONDS`, which defaults to `1800` seconds per step. Set `GUEST_PREP_MODE="safe"` only for copy-only troubleshooting.
 
 Root SSH with key authentication is acceptable for the first homelab version. This repository can create local SSH client material for template-build access, but it does not create Proxmox users or manage Proxmox authorization policy.
 

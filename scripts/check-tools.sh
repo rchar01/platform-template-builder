@@ -203,7 +203,7 @@ fi
 check_remote_proxmox_marker
 
 PREPARE_GUEST_IMAGE=${PREPARE_GUEST_IMAGE:-true}
-GUEST_PREP_MODE=${GUEST_PREP_MODE:-safe}
+GUEST_PREP_MODE=${GUEST_PREP_MODE:-full}
 if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
   if [[ "$GUEST_PREP_MODE" != "safe" && "$GUEST_PREP_MODE" != "full" ]]; then
     error "GUEST_PREP_MODE must be one of: safe full"

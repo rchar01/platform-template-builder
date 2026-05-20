@@ -179,7 +179,7 @@ Check:
 ssh pve-template-builder 'qm config 9000 | grep -E "^(serial0|vga):"'
 ```
 
-Fix: Rebuild the template with `TEMPLATE_CONSOLE_MODE="vga-serial"` and `GUEST_PREP_MODE="safe"`. The builder keeps `serial0: socket`, uses `vga: std` for noVNC debugging, and avoids offline guest filesystem mutation in safe mode.
+Fix: Rebuild the template with `TEMPLATE_CONSOLE_MODE="vga-serial"`. The builder keeps `serial0: socket` and uses `vga: std` for noVNC debugging. If the guest still fails before login, temporarily switch to `GUEST_PREP_MODE="safe"` to isolate offline guest filesystem mutation from console issues.
 
 ## Guest Kernel Panics Killing Init
 
@@ -194,7 +194,7 @@ ssh pve-template-builder 'qm config 9000'
 ssh pve-template-builder 'qm config 9900'
 ```
 
-Fix: Rebuild the template with `GUEST_PREP_MODE="safe"`. Safe mode avoids offline package installation, sysprep, machine-id rewrites, SELinux relabeling, and all other guest filesystem mutation. For Rocky/RHEL 10, also set `CPU_TYPE="host"` or another x86-64-v3-capable CPU model; Proxmox's generic default CPU can be too old for early userspace.
+Fix: For Rocky/RHEL 10, rebuild the template with `CPU_TYPE="host"` or another x86-64-v3-capable CPU model; Proxmox's generic default CPU can be too old for early userspace. If the CPU is already compatible and the panic persists, temporarily rebuild with `GUEST_PREP_MODE="safe"` to isolate offline package installation, sysprep, machine-id rewrites, SELinux relabeling, and other guest filesystem mutation.
 
 ## Rocky 10 Stops Before SSH Or QEMU Guest Agent
 
