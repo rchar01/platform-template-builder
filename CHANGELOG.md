@@ -7,9 +7,14 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-05-21
+
 ### Security
 
 - Smoke-test diagnostics and cleanup now require a per-run ownership marker before reading or destroying the configured smoke-test VMID, preventing metadata disclosure or cleanup actions against pre-existing VMs when `prepare` fails before clone creation.
+
+### Changed
+- Public examples now use the RFC 5737 `192.0.2.x` documentation range instead of real-looking local network addresses.
 
 ## [1.4.0] - 2026-05-20
 

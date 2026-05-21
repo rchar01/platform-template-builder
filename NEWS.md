@@ -4,6 +4,8 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
+## v1.4.1 - 2026-05-21
+
 - Smoke-test diagnostics and cleanup now require a per-run ownership marker before acting on the configured smoke-test VMID, so pre-existing VMs are not inspected or cleaned up after a failed smoke-test `prepare` step.
 
 ## v1.4.0 - 2026-05-20
