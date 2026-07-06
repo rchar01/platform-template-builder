@@ -1,10 +1,12 @@
-# platform-template-builder
-
 <div align="center">
   <img src="assets/brand/platform-template-builder-forge-avatar-transparent-512.png" width="256" alt="platform-template-builder logo">
+
+  <h1>platform-template-builder</h1>
+
+  <p>Build reusable Proxmox VM templates from upstream Linux cloud images.</p>
 </div>
 
-Build reusable Proxmox VM templates from upstream Linux cloud images.
+---
 
 This repository owns only the image/template lifecycle: it validates template config, syncs build scripts to a Proxmox node, downloads or reuses a cloud image, prepares the guest image, imports the disk, attaches cloud-init support, applies base hardware defaults, optionally smoke-tests a clone, and converts the VM into a Proxmox template.
 
@@ -373,3 +375,7 @@ Key docs:
 ## Secrets Policy
 
 Never commit SSH private keys, Proxmox API tokens, passwords, real `.env` files, downloaded VM images, or logs containing credentials.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
