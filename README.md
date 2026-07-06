@@ -14,7 +14,7 @@ It does not provision real workload VMs, assign production IP addresses, run Ope
 
 ## Platform Project
 
-This repository is one part of a homelab platform project.
+This repository is the Proxmox template-building layer of a broader platform toolchain.
 
 The repositories are split by responsibility so that template building, infrastructure provisioning, system configuration, Kubernetes bastion tooling, documentation, and shared helper tools can evolve independently.
 
@@ -99,7 +99,7 @@ If password SSH login is not available, use the manual `/root/.ssh/authorized_ke
 
 ### Separate Private Config Repo
 
-Use this flow for real homelab or production configs. Keep real `.env` files in a sibling private repository and point Make at that config root.
+Use this flow for real deployment configs. Keep real `.env` files in a sibling private repository and point Make at that config root.
 
 Expected private layout:
 
@@ -261,9 +261,9 @@ Template builds use private `.env` files copied from committed examples:
 cp configs/rocky-9-cloud-base.env.example configs/rocky-9-cloud-base.env
 ```
 
-Private `.env` files are ignored and must not be committed.
+Private `.env` files are ignored and must not be committed. Keep private configs, SSH keys, Proxmox tokens, downloaded images, and generated logs out of this public repository.
 
-For real homelab or production use, keep private configs outside this public repository, for example in `platform-private`:
+For real deployment use, keep private configs outside this public repository, for example in `platform-private`:
 
 ```text
 ../platform-private/template-builder/
@@ -371,10 +371,6 @@ Key docs:
 - `docs/template-conventions.md`
 - `docs/troubleshooting.md`
 - `docs/roadmap.md`
-
-## Secrets Policy
-
-Never commit SSH private keys, Proxmox API tokens, passwords, real `.env` files, downloaded VM images, or logs containing credentials.
 
 ## License
 
