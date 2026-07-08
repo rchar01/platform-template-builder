@@ -7,7 +7,7 @@ This project builds templates by SSHing to a Proxmox node and running local Prox
 - SSH access to the Proxmox node.
 - A user that can run `qm` and `pvesm` commands.
 - Bash on the Proxmox node.
-- `qm`, `pvesm`, `ip`, `ping`, `rsync`, `qemu-img`, and either `curl` or `wget`.
+- `qm`, `pvesm`, `ip`, `ping`, `rsync`, `timeout`, `qemu-img`, and either `curl` or `wget`.
 - Target VM disk storage exists.
 - Target cloud-init storage exists.
 - Target Linux bridge exists.
@@ -112,6 +112,8 @@ ssh pve-template-builder 'qm list'
 ssh pve-template-builder 'pvesm status'
 ssh pve-template-builder 'ip link show type bridge'
 ssh pve-template-builder 'command -v rsync'
+ssh pve-template-builder 'command -v ping'
+ssh pve-template-builder 'command -v timeout'
 ssh pve-template-builder 'command -v qemu-img'
 ssh pve-template-builder 'command -v curl || command -v wget'
 ```
@@ -153,7 +155,7 @@ make smoke-test TEMPLATE=rocky-9 \
   SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
 ```
 
-Choose a temporary IP that is not used by workload VMs, DHCP leases, reservations, or other hosts. The default smoke-test VMID is `9900`, but the script refuses to continue if that VMID already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Failed clones are destroyed by default except QEMU guest-agent timeouts, which print diagnostics and keep the VM automatically for noVNC/console debugging. The default boot wait is `SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900`.
+The local smoke-test script also requires `ssh-keygen` and `timeout`; it checks for them when the workflow starts. Choose a temporary IP that is not used by workload VMs, DHCP leases, reservations, or other hosts. The default smoke-test VMID is `9900`, but the script refuses to continue if that VMID already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Failed clones are destroyed by default except remote preparation failures and QEMU guest-agent timeouts, which print diagnostics and keep the VM automatically for noVNC/console debugging. `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly is clearer. The default boot wait is `SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900`.
 
 Clean a kept smoke-test VM without starting a new smoke test:
 

@@ -157,6 +157,8 @@ make smoke-test TEMPLATE=rocky-10.1 \
   SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900
 ```
 
+`SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly makes the temporary network settings easier to review.
+
 Verify the resulting template on Proxmox:
 
 ```bash

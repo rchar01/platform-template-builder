@@ -228,7 +228,8 @@ Local machine:
 - Bash
 - Make
 - SSH client with key access to the Proxmox node
-- `platform-ssh-init` from `platform-tools` and `ssh-keygen` only when using optional `make init-ssh`
+- `platform-ssh-init` from `platform-tools` and `ssh-keygen` when using optional `make init-ssh`
+- `ssh-keygen` and `timeout` when running smoke tests
 - `rsync`
 - standard Unix tools such as `awk`, `date`, `basename`, `mkdir`, and `tee`
 
@@ -237,7 +238,7 @@ Proxmox node:
 - Bash
 - SSH enabled
 - user can run `qm` and `pvesm`
-- `qm`, `pvesm`, `ip`, `rsync`, and `curl` or `wget`
+- `qm`, `pvesm`, `ip`, `ping`, `rsync`, `timeout`, and `curl` or `wget`
 - `qemu-img` for guest image preparation
 - `virt-customize` and `virt-sysprep` for the default `GUEST_PREP_MODE="full"`
 - target disk storage, cloud-init storage, and bridge exist
@@ -322,9 +323,9 @@ make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900
 make cleanup TEMPLATE=rocky-9
 ```
 
-`make check-tools` checks local tools first. If `configs/<TEMPLATE>-cloud-base.env` exists, it also checks the configured Proxmox host over SSH.
+`make check-tools` checks local build and SSH transport tools first. If `configs/<TEMPLATE>-cloud-base.env` exists, it also checks the configured Proxmox host over SSH. Smoke-test-only local tools such as `ssh-keygen` and `timeout` are checked by `make smoke-test` when that workflow starts.
 
-`make smoke-test` clones a temporary VM from the template, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks cloud-init and guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. QEMU guest-agent timeouts print Proxmox diagnostics and keep the failed VM automatically for noVNC/console debugging.
+`make smoke-test` clones a temporary VM from the template, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks cloud-init and guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Remote preparation failures and QEMU guest-agent timeouts print Proxmox diagnostics and keep the failed VM automatically for noVNC/console debugging. `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly is clearer.
 
 `make cleanup-smoke-test` destroys only `SMOKE_TEST_VMID`, force-stopping it first if needed so broken guests do not block cleanup on QEMU guest agent or ACPI shutdown. `make cleanup` destroys only `TEMPLATE_VMID` with the same destroy flow. Both require typing the target VMID unless `CLEANUP_ASSUME_YES=true` is set, and both use Proxmox purge cleanup plus unreferenced-disk cleanup when supported by the installed Proxmox version.
 
