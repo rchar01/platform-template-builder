@@ -10,21 +10,11 @@ usage() {
   printf 'Usage: %s <config.env>\n' "${0##*/}" >&2
 }
 
-script_dir() {
-  local source_dir
-  source_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-  printf '%s\n' "$source_dir"
-}
-
-command_exists() {
-  command -v "$1" >/dev/null 2>&1
-}
-
 require_guest_prep_command() {
   local command_name=$1
   local package_name=$2
 
-  command_exists "$command_name" || die "${command_name} not found; install ${package_name} on the template build host."
+  ptb_command_exists "$command_name" || die "${command_name} not found; install ${package_name} on the template build host."
 }
 
 storage_exists() {
@@ -32,38 +22,14 @@ storage_exists() {
   pvesm status | awk 'NR > 1 { print $1 }' | grep -Fxq "$storage"
 }
 
-resolve_profile_file() {
-  local profile=$1
-  local root_dir=$2
-
-  if [[ "$profile" == /* ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "$profile" ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "${root_dir}/${profile}" ]]; then
-    printf '%s\n' "${root_dir}/${profile}"
-  else
-    return 1
-  fi
-}
-
 vm_exists() {
   qm status "$TEMPLATE_VMID" >/dev/null 2>&1
 }
 
 destroy_existing_vm() {
-  local status
-
   warn "FORCE_RECREATE=true; destroying existing VMID ${TEMPLATE_VMID} (${TEMPLATE_NAME})"
   qm config "$TEMPLATE_VMID"
-
-  status=$(qm status "$TEMPLATE_VMID" | awk -F': ' '/status:/ { print $2 }')
-  if [[ "$status" == "running" ]]; then
-    warn "Stopping running VMID ${TEMPLATE_VMID} before destroy"
-    qm shutdown "$TEMPLATE_VMID" --timeout 60 || qm stop "$TEMPLATE_VMID"
-  fi
-
-  qm destroy "$TEMPLATE_VMID" --purge
+  proxmox_vm_destroy "$TEMPLATE_VMID"
 }
 
 download_image() {
@@ -76,9 +42,9 @@ download_image() {
     ok "Reusing cached image ${IMAGE_PATH}"
   else
     info "Downloading ${IMAGE_URL}"
-    if command_exists curl; then
+    if ptb_command_exists curl; then
       curl -fL "$IMAGE_URL" -o "${IMAGE_PATH}.tmp"
-    elif command_exists wget; then
+    elif ptb_command_exists wget; then
       wget -O "${IMAGE_PATH}.tmp" "$IMAGE_URL"
     else
       die "Neither curl nor wget is available for image download"
@@ -96,7 +62,7 @@ download_image() {
     die "Set IMAGE_SHA256 or IMAGE_SHA512 before importing cloud images"
   fi
 
-  command_exists "$checksum_tool" || die "${checksum_tool} is required for image checksum verification"
+  ptb_command_exists "$checksum_tool" || die "${checksum_tool} is required for image checksum verification"
   printf '%s  %s\n' "$checksum_value" "$IMAGE_PATH" | "$checksum_tool" -c - >/dev/null
   ok "Image checksum verified with ${checksum_tool}"
 }
@@ -226,24 +192,15 @@ if [[ $# -ne 1 ]]; then
 fi
 
 CONFIG_FILE=$1
-SCRIPT_DIR=$(script_dir)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(CDPATH='' cd -- "${SCRIPT_DIR}/.." && pwd)
+# shellcheck source=scripts/common.sh
+. "${SCRIPT_DIR}/common.sh"
+# shellcheck source=scripts/proxmox-vm-destroy.sh
+. "${SCRIPT_DIR}/proxmox-vm-destroy.sh"
 
 "${SCRIPT_DIR}/validate-config.sh" "$CONFIG_FILE"
-
-set -a
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
-
-PROFILE_FILE=$(resolve_profile_file "$IMAGE_PROFILE" "$ROOT_DIR") || die "Image profile not found: ${IMAGE_PROFILE}"
-
-set -a
-# shellcheck source=/dev/null
-. "$PROFILE_FILE"
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
+ptb_load_template_config "$CONFIG_FILE" "$ROOT_DIR"
 
 IMAGE_CACHE_DIR="${ROOT_DIR}/.cache/images"
 IMAGE_PATH="${IMAGE_CACHE_DIR}/${IMAGE_NAME}"
@@ -255,10 +212,10 @@ IMPORT_IMAGE_PATH=$IMAGE_PATH
 
 info "Checking Proxmox environment"
 [[ -d /etc/pve ]] || die "This script must run on a Proxmox node; /etc/pve is missing"
-command_exists qm || die "Required command not found: qm"
-command_exists pvesm || die "Required command not found: pvesm"
-command_exists ip || die "Required command not found: ip"
-command_exists curl || command_exists wget || die "Required command not found: curl or wget"
+ptb_command_exists qm || die "Required command not found: qm"
+ptb_command_exists pvesm || die "Required command not found: pvesm"
+ptb_command_exists ip || die "Required command not found: ip"
+ptb_command_exists curl || ptb_command_exists wget || die "Required command not found: curl or wget"
 pvesm status >/dev/null || die "pvesm status failed; check Proxmox storage subsystem"
 
 if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
@@ -266,7 +223,7 @@ if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
     safe | full) ;;
     *) die "GUEST_PREP_MODE must be one of: safe full" ;;
   esac
-  [[ "$GUEST_PREP_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || die "GUEST_PREP_TIMEOUT_SECONDS must be numeric"
+  ptb_is_number "$GUEST_PREP_TIMEOUT_SECONDS" || die "GUEST_PREP_TIMEOUT_SECONDS must be numeric"
   (( GUEST_PREP_TIMEOUT_SECONDS > 0 )) || die "GUEST_PREP_TIMEOUT_SECONDS must be greater than 0"
   require_guest_prep_command timeout coreutils
   require_guest_prep_command qemu-img qemu-utils

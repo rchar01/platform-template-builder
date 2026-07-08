@@ -10,60 +10,24 @@ usage() {
   printf 'Usage: %s <config.env>\n' "${0##*/}" >&2
 }
 
-script_dir() {
-  local source_dir
-  source_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-  printf '%s\n' "$source_dir"
-}
-
-command_exists() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-resolve_profile_file() {
-  local profile=$1
-  local root_dir=$2
-
-  if [[ "$profile" == /* ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "$profile" ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "${root_dir}/${profile}" ]]; then
-    printf '%s\n' "${root_dir}/${profile}"
-  else
-    return 1
-  fi
-}
-
 if [[ $# -ne 1 ]]; then
   usage
   exit 2
 fi
 
 CONFIG_FILE=$1
-SCRIPT_DIR=$(script_dir)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(CDPATH='' cd -- "${SCRIPT_DIR}/.." && pwd)
+# shellcheck source=scripts/common.sh
+. "${SCRIPT_DIR}/common.sh"
 # shellcheck source=scripts/ssh-transport.sh
 . "${SCRIPT_DIR}/ssh-transport.sh"
 
 "${SCRIPT_DIR}/validate-config.sh" "$CONFIG_FILE"
+ptb_load_template_config "$CONFIG_FILE" "$ROOT_DIR"
 
-set -a
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
-
-PROFILE_FILE=$(resolve_profile_file "$IMAGE_PROFILE" "$ROOT_DIR") || die "Image profile not found: ${IMAGE_PROFILE}"
-
-set -a
-# shellcheck source=/dev/null
-. "$PROFILE_FILE"
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
-
-command_exists ssh || die "ssh is required"
-command_exists rsync || die "rsync is required"
+ptb_command_exists ssh || die "ssh is required"
+ptb_command_exists rsync || die "rsync is required"
 
 ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
 
@@ -91,10 +55,12 @@ fi
 
 warn "Destroying only VMID ${TEMPLATE_VMID}"
 info "Syncing destroy helper to ${SSH_TRANSPORT_DISPLAY}"
+ESC_PROXMOX_REMOTE_DIR=$(ptb_shell_quote "$PROXMOX_REMOTE_DIR")
+ESC_REMOTE_SCRIPT_DIR=$(ptb_shell_quote "${PROXMOX_REMOTE_DIR}/scripts")
 # shellcheck disable=SC2029
-ssh_transport_ssh "mkdir -p '${PROXMOX_REMOTE_DIR}/scripts'"
+ssh_transport_ssh "mkdir -p ${ESC_REMOTE_SCRIPT_DIR}"
 rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${SCRIPT_DIR}/proxmox-vm-destroy.sh" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/proxmox-vm-destroy.sh"
 # shellcheck disable=SC2029
-ssh_transport_ssh "cd '${PROXMOX_REMOTE_DIR}' && . './scripts/proxmox-vm-destroy.sh' && proxmox_vm_destroy '${TEMPLATE_VMID}'"
+ssh_transport_ssh "cd ${ESC_PROXMOX_REMOTE_DIR} && . './scripts/proxmox-vm-destroy.sh' && proxmox_vm_destroy '${TEMPLATE_VMID}'"
 
 ok "Destroyed VMID ${TEMPLATE_VMID}"

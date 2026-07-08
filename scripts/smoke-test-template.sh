@@ -10,24 +10,6 @@ usage() {
   printf 'Usage: %s <config.env>\n' "${0##*/}" >&2
 }
 
-script_dir() {
-  local source_dir
-  source_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-  printf '%s\n' "$source_dir"
-}
-
-command_exists() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-is_bool() {
-  [[ "$1" == "true" || "$1" == "false" ]]
-}
-
-is_number() {
-  [[ "$1" =~ ^[0-9]+$ ]]
-}
-
 is_ipv4() {
   local octet
   local o1
@@ -64,25 +46,6 @@ is_safe_guest_user() {
 
 is_safe_vm_name() {
   [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]
-}
-
-shell_quote() {
-  printf "'%s'" "${1//\'/\'\"\'\"\'}"
-}
-
-resolve_profile_file() {
-  local profile=$1
-  local root_dir=$2
-
-  if [[ "$profile" == /* ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "$profile" ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "${root_dir}/${profile}" ]]; then
-    printf '%s\n' "${root_dir}/${profile}"
-  else
-    return 1
-  fi
 }
 
 guest_ssh_service() {
@@ -221,6 +184,7 @@ sync_remote_smoke_runner() {
   # shellcheck disable=SC2029
   ssh_transport_ssh "mkdir -p ${ESC_REMOTE_SCRIPT_DIR} ${ESC_REMOTE_SMOKE_DIR}"
   rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${SCRIPT_DIR}/proxmox-smoke-test-runner.sh" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/proxmox-smoke-test-runner.sh"
+  rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${SCRIPT_DIR}/proxmox-vm-destroy.sh" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/proxmox-vm-destroy.sh"
   rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "$LOCAL_PAYLOAD_TEMP" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/${REMOTE_PAYLOAD_FILE_REL}"
   rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "$SMOKE_TEST_PUBLIC_KEY_PATH" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/${REMOTE_PUBLIC_KEY_FILE_REL}"
   # shellcheck disable=SC2029
@@ -238,19 +202,25 @@ cleanup_smoke_vm() {
 
   if [[ "$SMOKE_TEST_FAILED" == "true" && "$SMOKE_TEST_KEEP_FAILED" == "true" ]]; then
     warn "Keeping failed smoke-test VM ${SMOKE_TEST_VMID} for debugging"
-    cleanup_remote_smoke_files
     return 0
   fi
 
   if [[ "$SMOKE_TEST_CLEANUP" != "true" ]]; then
     warn "Keeping smoke-test VM ${SMOKE_TEST_VMID} because SMOKE_TEST_CLEANUP=false"
-    cleanup_remote_smoke_files
     return 0
   fi
 
   info "Destroying smoke-test VM ${SMOKE_TEST_VMID}"
-  run_remote_smoke_action cleanup >/dev/null 2>&1 || true
+  run_remote_smoke_action cleanup
   cleanup_remote_smoke_files
+}
+
+cleanup_all() {
+  local cleanup_status=0
+
+  cleanup_smoke_vm || cleanup_status=$?
+  ssh_transport_cleanup
+  return "$cleanup_status"
 }
 
 if [[ $# -ne 1 ]]; then
@@ -259,32 +229,21 @@ if [[ $# -ne 1 ]]; then
 fi
 
 CONFIG_FILE=$1
-SCRIPT_DIR=$(script_dir)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(CDPATH='' cd -- "${SCRIPT_DIR}/.." && pwd)
+# shellcheck source=scripts/common.sh
+. "${SCRIPT_DIR}/common.sh"
 # shellcheck source=scripts/ssh-transport.sh
 . "${SCRIPT_DIR}/ssh-transport.sh"
 
 "${SCRIPT_DIR}/validate-config.sh" "$CONFIG_FILE"
+ptb_load_template_config "$CONFIG_FILE" "$ROOT_DIR"
 
-set -a
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
-
-PROFILE_FILE=$(resolve_profile_file "$IMAGE_PROFILE" "$ROOT_DIR") || die "Image profile not found: ${IMAGE_PROFILE}"
-
-set -a
-# shellcheck source=/dev/null
-. "$PROFILE_FILE"
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
-
-command_exists ssh || die "ssh is required"
-command_exists ssh-keygen || die "ssh-keygen is required"
-command_exists mktemp || die "mktemp is required"
-command_exists rsync || die "rsync is required"
-command_exists timeout || die "timeout is required"
+ptb_command_exists ssh || die "ssh is required"
+ptb_command_exists ssh-keygen || die "ssh-keygen is required"
+ptb_command_exists mktemp || die "mktemp is required"
+ptb_command_exists rsync || die "rsync is required"
+ptb_command_exists timeout || die "timeout is required"
 
 ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
 
@@ -305,7 +264,7 @@ LOCAL_PAYLOAD_TEMP=''
 SMOKE_TEST_SSH_SERVICE=$(guest_ssh_service)
 EXPECTED_TEMPLATE_VGA=$(expected_template_vga)
 
-trap cleanup_smoke_vm EXIT
+trap cleanup_all EXIT
 
 [[ "$SMOKE_TEST_VMID" =~ ^[0-9]+$ ]] || die "SMOKE_TEST_VMID must be numeric"
 [[ -n "${SMOKE_TEST_IPV4:-}" ]] || die "SMOKE_TEST_IPV4 is required, for example <temporary-ip/cidr>"
@@ -321,25 +280,25 @@ is_safe_vm_name "$SMOKE_TEST_NAME" || die "SMOKE_TEST_NAME may contain only lett
 if [[ -n "${SMOKE_TEST_SEARCHDOMAIN:-}" ]]; then
   is_safe_domain_name "$SMOKE_TEST_SEARCHDOMAIN" || die "SMOKE_TEST_SEARCHDOMAIN must be a DNS search domain"
 fi
-is_number "$SMOKE_TEST_BOOT_TIMEOUT_SECONDS" || die "SMOKE_TEST_BOOT_TIMEOUT_SECONDS must be numeric"
-is_number "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" || die "SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS must be numeric"
+ptb_is_number "$SMOKE_TEST_BOOT_TIMEOUT_SECONDS" || die "SMOKE_TEST_BOOT_TIMEOUT_SECONDS must be numeric"
+ptb_is_number "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" || die "SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS must be numeric"
 (( SMOKE_TEST_BOOT_TIMEOUT_SECONDS > 0 )) || die "SMOKE_TEST_BOOT_TIMEOUT_SECONDS must be greater than 0"
 (( SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS > 0 )) || die "SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS must be greater than 0"
-is_bool "$SMOKE_TEST_KEEP_FAILED" || die "SMOKE_TEST_KEEP_FAILED must be true or false"
-is_bool "$SMOKE_TEST_CLEANUP" || die "SMOKE_TEST_CLEANUP must be true or false"
-is_bool "$SMOKE_TEST_FORCE_RECREATE" || die "SMOKE_TEST_FORCE_RECREATE must be true or false"
+ptb_is_bool "$SMOKE_TEST_KEEP_FAILED" || die "SMOKE_TEST_KEEP_FAILED must be true or false"
+ptb_is_bool "$SMOKE_TEST_CLEANUP" || die "SMOKE_TEST_CLEANUP must be true or false"
+ptb_is_bool "$SMOKE_TEST_FORCE_RECREATE" || die "SMOKE_TEST_FORCE_RECREATE must be true or false"
 
 SMOKE_TEST_IP_ONLY=${SMOKE_TEST_IPV4%%/*}
 REMOTE_SMOKE_DIR_REL="tmp/smoke-test-${SMOKE_TEST_VMID}"
 REMOTE_PAYLOAD_FILE_REL="${REMOTE_SMOKE_DIR_REL}/payload.env"
 REMOTE_PUBLIC_KEY_FILE_REL="${REMOTE_SMOKE_DIR_REL}/authorized_key.pub"
-ESC_PROXMOX_REMOTE_DIR=$(shell_quote "$PROXMOX_REMOTE_DIR")
-ESC_REMOTE_SCRIPT_DIR=$(shell_quote "${PROXMOX_REMOTE_DIR}/scripts")
-ESC_REMOTE_SMOKE_DIR=$(shell_quote "${PROXMOX_REMOTE_DIR}/${REMOTE_SMOKE_DIR_REL}")
-ESC_REMOTE_PAYLOAD_FILE=$(shell_quote "$REMOTE_PAYLOAD_FILE_REL")
+ESC_PROXMOX_REMOTE_DIR=$(ptb_shell_quote "$PROXMOX_REMOTE_DIR")
+ESC_REMOTE_SCRIPT_DIR=$(ptb_shell_quote "${PROXMOX_REMOTE_DIR}/scripts")
+ESC_REMOTE_SMOKE_DIR=$(ptb_shell_quote "${PROXMOX_REMOTE_DIR}/${REMOTE_SMOKE_DIR_REL}")
+ESC_REMOTE_PAYLOAD_FILE=$(ptb_shell_quote "$REMOTE_PAYLOAD_FILE_REL")
 SMOKE_TEST_SSH_KEY_PATH=$(ssh_transport_expand_path "$SMOKE_TEST_SSH_KEY")
 [[ -f "$SMOKE_TEST_SSH_KEY_PATH" ]] || die "Smoke-test SSH private key not found: ${SMOKE_TEST_SSH_KEY_PATH}"
-if command_exists stat; then
+if ptb_command_exists stat; then
   key_mode=$(stat -c '%a' "$SMOKE_TEST_SSH_KEY_PATH")
   if [[ ${key_mode: -2} != "00" ]]; then
     warn "Smoke-test SSH private key has group/other permissions (${key_mode}); ssh may reject it"

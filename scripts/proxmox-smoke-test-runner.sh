@@ -6,6 +6,9 @@ ok() { printf '[OK] %s\n' "$*"; }
 warn() { printf '[WARN] %s\n' "$*"; }
 die() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 
+# shellcheck source=scripts/proxmox-vm-destroy.sh
+. ./scripts/proxmox-vm-destroy.sh
+
 usage() {
   printf 'Usage: %s <payload.env> <prepare|diagnostics|qga-check|shutdown|cleanup>\n' "${0##*/}" >&2
 }
@@ -227,10 +230,9 @@ marker_matches_payload() {
     "$marker_smoke_test_run_id" == "$SMOKE_TEST_RUN_ID" ]]
 }
 
-destroy_existing_smoke_vmid_for_force_recreate() {
+destroy_existing_smoke_vmid() {
   qm status "$SMOKE_TEST_VMID" >/dev/null 2>&1 || return 0
-  qm stop "$SMOKE_TEST_VMID" >/dev/null 2>&1 || true
-  qm destroy "$SMOKE_TEST_VMID" --purge >/dev/null 2>&1 || true
+  proxmox_vm_destroy "$SMOKE_TEST_VMID"
 }
 
 destroy_created_smoke_vm() {
@@ -239,7 +241,7 @@ destroy_created_smoke_vm() {
     return 0
   fi
 
-  destroy_existing_smoke_vmid_for_force_recreate
+  destroy_existing_smoke_vmid
   rm -f -- "$SMOKE_TEST_OWNERSHIP_MARKER"
 }
 
@@ -287,7 +289,7 @@ prepare_smoke_vm() {
     fi
 
     warn "SMOKE_TEST_FORCE_RECREATE=true; destroying existing VMID ${SMOKE_TEST_VMID}"
-    destroy_existing_smoke_vmid_for_force_recreate
+    destroy_existing_smoke_vmid
   fi
 
   info "Cloning template ${TEMPLATE_VMID} to smoke-test VM ${SMOKE_TEST_VMID} (${SMOKE_TEST_NAME})"

@@ -9,62 +9,27 @@ usage() {
   printf 'Usage: %s <config.env>\n' "${0##*/}" >&2
 }
 
-script_dir() {
-  local source_dir
-  source_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-  printf '%s\n' "$source_dir"
-}
-
-command_exists() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-resolve_profile_file() {
-  local profile=$1
-  local root_dir=$2
-
-  if [[ "$profile" == /* ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "$profile" ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "${root_dir}/${profile}" ]]; then
-    printf '%s\n' "${root_dir}/${profile}"
-  else
-    return 1
-  fi
-}
-
 if [[ $# -ne 1 ]]; then
   usage
   exit 2
 fi
 
 CONFIG_FILE=$1
-SCRIPT_DIR=$(script_dir)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(CDPATH='' cd -- "${SCRIPT_DIR}/.." && pwd)
+# shellcheck source=scripts/common.sh
+. "${SCRIPT_DIR}/common.sh"
 # shellcheck source=scripts/ssh-transport.sh
 . "${SCRIPT_DIR}/ssh-transport.sh"
 CONFIG_BASENAME=$(basename -- "$CONFIG_FILE")
+ptb_is_safe_file_name "$CONFIG_BASENAME" || die "Config file basename may contain only letters, numbers, dot, underscore, and dash"
 
 "${SCRIPT_DIR}/validate-config.sh" "$CONFIG_FILE"
+ptb_load_template_config "$CONFIG_FILE" "$ROOT_DIR"
 
-set -a
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
-
-PROFILE_FILE=$(resolve_profile_file "$IMAGE_PROFILE" "$ROOT_DIR") || die "Image profile not found: ${IMAGE_PROFILE}"
-
-set -a
-# shellcheck source=/dev/null
-. "$PROFILE_FILE"
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
-
-command_exists ssh || die "ssh is required"
-command_exists rsync || die "rsync is required"
-command_exists tee || die "tee is required"
+ptb_command_exists ssh || die "ssh is required"
+ptb_command_exists rsync || die "rsync is required"
+ptb_command_exists tee || die "tee is required"
 
 ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
 
@@ -75,10 +40,16 @@ ssh_transport_ssh 'true' || die "Cannot connect to Proxmox host ${PROXMOX_HOST}.
 mkdir -p "${ROOT_DIR}/logs"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 LOG_FILE="${ROOT_DIR}/logs/${TIMESTAMP}-${TEMPLATE_NAME}.log"
+ESC_PROXMOX_REMOTE_DIR=$(ptb_shell_quote "$PROXMOX_REMOTE_DIR")
+ESC_REMOTE_SCRIPT_DIR=$(ptb_shell_quote "${PROXMOX_REMOTE_DIR}/scripts")
+ESC_REMOTE_CONFIG_DIR=$(ptb_shell_quote "${PROXMOX_REMOTE_DIR}/configs")
+ESC_REMOTE_IMAGE_DIR=$(ptb_shell_quote "${PROXMOX_REMOTE_DIR}/configs/images")
+ESC_REMOTE_CACHE_DIR=$(ptb_shell_quote "${PROXMOX_REMOTE_DIR}/.cache/images")
+ESC_REMOTE_CONFIG_FILE=$(ptb_shell_quote "./configs/${CONFIG_BASENAME}")
 
 info "Preparing remote directory ${SSH_TRANSPORT_DISPLAY}:${PROXMOX_REMOTE_DIR}"
 # shellcheck disable=SC2029
-ssh_transport_ssh "mkdir -p '${PROXMOX_REMOTE_DIR}/scripts' '${PROXMOX_REMOTE_DIR}/configs' '${PROXMOX_REMOTE_DIR}/configs/images' '${PROXMOX_REMOTE_DIR}/.cache/images'"
+ssh_transport_ssh "mkdir -p ${ESC_REMOTE_SCRIPT_DIR} ${ESC_REMOTE_CONFIG_DIR} ${ESC_REMOTE_IMAGE_DIR} ${ESC_REMOTE_CACHE_DIR}"
 
 info "Syncing scripts to ${SSH_TRANSPORT_DISPLAY}"
 rsync -az --delete -e "$SSH_TRANSPORT_RSYNC_RSH" "${ROOT_DIR}/scripts/" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/"
@@ -91,7 +62,7 @@ rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${ROOT_DIR}/configs/images/" "${SSH_TRA
 
 info "Starting remote template build; log: ${LOG_FILE}"
 # shellcheck disable=SC2029
-ssh_transport_ssh "cd '${PROXMOX_REMOTE_DIR}' && ./scripts/build-proxmox-cloud-template.sh './configs/${CONFIG_BASENAME}'" 2>&1 | tee "$LOG_FILE"
+ssh_transport_ssh "cd ${ESC_PROXMOX_REMOTE_DIR} && ./scripts/build-proxmox-cloud-template.sh ${ESC_REMOTE_CONFIG_FILE}" 2>&1 | tee "$LOG_FILE"
 
 ok "Remote build completed"
 printf 'Log: %s\n' "$LOG_FILE"

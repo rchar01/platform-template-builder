@@ -11,39 +11,14 @@ usage() {
   printf 'Usage: %s [config.env]\n' "${0##*/}" >&2
 }
 
-script_dir() {
-  local source_dir
-  source_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-  printf '%s\n' "$source_dir"
-}
-
-command_exists() {
-  command -v "$1" >/dev/null 2>&1
-}
-
 check_local_command() {
   local command_name=$1
 
-  if command_exists "$command_name"; then
+  if ptb_command_exists "$command_name"; then
     ok "Local command available: ${command_name}"
   else
     error "Local command missing: ${command_name}"
     MISSING=1
-  fi
-}
-
-resolve_profile_file() {
-  local profile=$1
-  local root_dir=$2
-
-  if [[ "$profile" == /* ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "$profile" ]]; then
-    printf '%s\n' "$profile"
-  elif [[ -f "${root_dir}/${profile}" ]]; then
-    printf '%s\n' "${root_dir}/${profile}"
-  else
-    return 1
   fi
 }
 
@@ -97,8 +72,10 @@ if [[ $# -gt 1 ]]; then
   exit 2
 fi
 
-SCRIPT_DIR=$(script_dir)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(CDPATH='' cd -- "${SCRIPT_DIR}/.." && pwd)
+# shellcheck source=scripts/common.sh
+. "${SCRIPT_DIR}/common.sh"
 # shellcheck source=scripts/ssh-transport.sh
 . "${SCRIPT_DIR}/ssh-transport.sh"
 MISSING=0
@@ -126,7 +103,7 @@ for command_name in "${local_required[@]}"; do
   check_local_command "$command_name"
 done
 
-if command_exists shellcheck; then
+if ptb_command_exists shellcheck; then
   ok "Optional local command available: shellcheck"
 else
   warn "Optional local command missing: shellcheck; make shellcheck will fail until installed"
@@ -148,19 +125,7 @@ fi
 info "Validating config before remote tool checks"
 "${SCRIPT_DIR}/validate-config.sh" "$CONFIG_FILE"
 
-set -a
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
-
-PROFILE_FILE=$(resolve_profile_file "$IMAGE_PROFILE" "$ROOT_DIR") || die "Image profile not found: ${IMAGE_PROFILE}"
-
-set -a
-# shellcheck source=/dev/null
-. "$PROFILE_FILE"
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
-set +a
+ptb_load_template_config "$CONFIG_FILE" "$ROOT_DIR"
 
 ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
 
