@@ -18,7 +18,7 @@ The Proxmox node also needs `sha256sum` or `sha512sum`, matching the required ch
 
 `virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian and are required for the default `GUEST_PREP_MODE="full"`. Install it on the template build host before building full-prep templates. It may pull a sizable dependency set. Missing tools fail early with messages such as `virt-customize not found; install libguestfs-tools on the template build host.` Guest-prep commands are bounded by `GUEST_PREP_TIMEOUT_SECONDS`, which defaults to `1800` seconds per step. Set `GUEST_PREP_MODE="safe"` only for copy-only troubleshooting.
 
-Root SSH with key authentication is acceptable for the first homelab version. This repository can create local SSH client material for template-build access, but it does not create Proxmox users or manage Proxmox authorization policy.
+Root SSH with key authentication can be acceptable for controlled deployments. Production environments should choose an SSH user and authorization model that matches their Proxmox security policy. This repository can create local SSH client material for template-build access, but it does not create Proxmox users or manage Proxmox authorization policy.
 
 ## SSH Bootstrap
 
@@ -45,7 +45,7 @@ cp configs/ssh/template-builder.env.example configs/ssh/template-builder.env
 make init-ssh
 ```
 
-For real homelab use, the SSH bootstrap config may live in `platform-private` and be selected with `CONFIG_ROOT`:
+For real deployment or production use, the SSH bootstrap config may live outside this public repository and be selected with `CONFIG_ROOT`:
 
 ```bash
 make init-ssh CONFIG_ROOT=../platform-private/template-builder

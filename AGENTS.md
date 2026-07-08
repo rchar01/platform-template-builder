@@ -19,9 +19,9 @@
 - Do not add OpenTofu provisioning, Ansible configuration, workload VM definitions, production IPs, application config, Proxmox API tokens, or secret management here.
 - `scripts/build-proxmox-cloud-template.sh` is for the Proxmox node; local runs should use `make build TEMPLATE=...` or `scripts/remote-run-template-build.sh`.
 
-## Homelab Platform Context
+## Platform Context
 
-This repository is one part of a homelab platform:
+This repository is the Proxmox template-building layer of a broader platform toolchain:
 
 - `platform-template-builder`: builds reusable Proxmox VM templates from cloud images using SSH, `rsync`, and Proxmox `qm` commands.
 - `platform-infra`: provisions Proxmox VMs from those templates using OpenTofu and the Proxmox API.

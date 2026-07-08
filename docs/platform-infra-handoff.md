@@ -56,7 +56,7 @@ Keep application setup, package installation, service configuration, Kubernetes 
 
 Rocky 10.1 needs a CPU model with sufficiently new x86-64 features. The template is built with `CPU_TYPE="host"`.
 
-When cloning the template, do not override the CPU model back to Proxmox's generic default. Either inherit the template CPU configuration or explicitly set a compatible CPU model, normally `host` in this homelab.
+When cloning the template, do not override the CPU model back to Proxmox's generic default. Either inherit the template CPU configuration or explicitly set a compatible CPU model, normally `host` for Rocky/RHEL 10 templates.
 
 If a cloned Rocky/RHEL 10 VM reaches GRUB or early boot but never starts SSH or QEMU guest agent, check the clone config first:
 

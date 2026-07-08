@@ -37,7 +37,7 @@ make smoke-test TEMPLATE=rocky-10.1 \
 
 ## Running With Separate Private Config Repo
 
-For real homelab or production use, prefer storing private configs in `platform-private` and point Make at them with `CONFIG_ROOT` or `CONFIG`:
+For real deployment or production use, prefer storing private configs outside this public repository and point Make at them with `CONFIG_ROOT` or `CONFIG`:
 
 ```text
 ../platform-private/template-builder/
