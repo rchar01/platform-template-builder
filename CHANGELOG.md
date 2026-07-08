@@ -7,6 +7,10 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Image profiles now declare expected QEMU guest-agent support and upstream filesystem layout metadata. Validation requires `ENABLE_QEMU_AGENT=true`, `PREPARE_GUEST_IMAGE=true`, and `GUEST_PREP_MODE=full` when a profile sets `IMAGE_EXPECTS_QEMU_AGENT=true`, and rejects profile-owned image metadata when it is set in template configs. Existing private configs that copied `CLOUDINIT_USER` or image metadata should remove those keys and keep them in image profiles.
+
 ## [1.4.1] - 2026-05-21
 
 ### Security

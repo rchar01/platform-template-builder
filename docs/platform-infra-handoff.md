@@ -50,6 +50,8 @@ The OpenTofu configuration should provide environment-specific values only in th
 - SSH public keys for the cloud-init user
 - tags, descriptions, and lifecycle settings used by the infra repository
 
+`platform-template-builder` owns only generic base-template hardware defaults. Workload-specific disk and controller tuning, including disk size, cache mode, discard/TRIM, iothreads, storage performance choices, backup policy, and replication settings, belongs in `platform-infra` or private downstream configuration.
+
 Keep application setup, package installation, service configuration, Kubernetes setup, and secrets out of OpenTofu. Those belong in `platform-config`, `platform-k8s-bastion`, or a private secrets mechanism.
 
 ## Rocky/RHEL 10 Requirements

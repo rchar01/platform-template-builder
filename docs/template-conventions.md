@@ -34,10 +34,16 @@ IMAGE_URL="https://example.invalid/cloud-image.qcow2"
 IMAGE_NAME="cloud-image.qcow2"
 IMAGE_SHA256="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 IMAGE_OS_FAMILY="rhel"
+IMAGE_EXPECTS_QEMU_AGENT="true"
+IMAGE_FILESYSTEM_LAYOUT="unknown"
 CLOUDINIT_USER="example"
 ```
 
 Set exactly one checksum field in each image profile: `IMAGE_SHA256` for upstream SHA-256 digests or `IMAGE_SHA512` for upstream SHA-512 digests. Template builds verify the downloaded or cached image before importing it into Proxmox.
+
+Set `IMAGE_EXPECTS_QEMU_AGENT="true"` for profiles that should produce templates with working Proxmox QEMU guest-agent support. Validation requires those profiles to enable the Proxmox agent flag and use full guest preparation because full prep installs and enables the in-guest `qemu-guest-agent.service`.
+
+Set `IMAGE_FILESYSTEM_LAYOUT` to the inspected upstream image layout. Allowed values are `unknown`, `plain-ext4`, `plain-xfs`, `lvm-ext4`, `lvm-xfs`, and `other`. Use `unknown` until the image has been inspected with a read-only tool such as `virt-filesystems`. The builder preserves the upstream guest filesystem layout; it does not intentionally convert ext4, XFS, LVM, partition tables, or volume groups.
 
 Template configs reference profiles with `IMAGE_PROFILE`, for example:
 
@@ -58,6 +64,8 @@ IMAGE_PROFILE="configs/images/rocky-9.env"
 - QEMU guest agent enabled.
 - Proxmox cloud-init type `nocloud`.
 
+These defaults are base-template defaults only. Workload-specific Proxmox disk and controller tuning, including disk size overrides, cache mode, discard/TRIM, iothreads, backup policy, replication, and storage-performance choices, belongs downstream in the provisioning layer.
+
 ## Guest Preparation
 
 Full guest preparation is the default. It copies the upstream cloud image, then installs and enables guest-side services before the disk is imported into Proxmox:
@@ -70,6 +78,6 @@ Full guest preparation is the default. It copies the upstream cloud image, then 
 
 Full guest preparation also removes stale cloud-init state, SSH host keys, NetworkManager connection profiles, non-loopback legacy network-scripts profiles, cloud-init logs, and machine identity files. This allows clones to regenerate unique machine identity and SSH host keys on first boot. The template conversion happens only after the selected preparation mode succeeds.
 
-Safe guest preparation remains available for troubleshooting. It only copies the upstream cloud image with `qemu-img` and does not mount or mutate the guest filesystem.
+Safe guest preparation remains available for troubleshooting. It only copies the upstream cloud image with `qemu-img` and does not mount or mutate the guest filesystem, so it does not provide the same clone-identity or guest-agent guarantees as full prep.
 
 Use `TEMPLATE_CONSOLE_MODE="vga-serial"` by default so noVNC remains useful when networking or QEMU guest agent startup fails. `TEMPLATE_CONSOLE_MODE="serial"` sets `vga: serial0` and should only be used once serial-only behavior is verified for that image.

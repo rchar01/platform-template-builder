@@ -135,9 +135,11 @@ Image profiles are committed files under `configs/images/`. Template configs ref
 | `IMAGE_NAME` | Committed image profile. |
 | `IMAGE_SHA256` / `IMAGE_SHA512` | Committed image profile; exactly one is required and is verified before image import. |
 | `IMAGE_OS_FAMILY` | Committed image profile; currently `rhel` or `debian` for guest preparation package/service names. |
+| `IMAGE_EXPECTS_QEMU_AGENT` | Committed image profile; `true` requires `ENABLE_QEMU_AGENT=true`, `PREPARE_GUEST_IMAGE=true`, and `GUEST_PREP_MODE=full`. |
+| `IMAGE_FILESYSTEM_LAYOUT` | Committed image profile; inspected upstream guest layout, or `unknown` until verified. Allowed values are `unknown`, `plain-ext4`, `plain-xfs`, `lvm-ext4`, `lvm-xfs`, and `other`. |
 | `CLOUDINIT_USER` | Committed image profile default for the OS. |
 
-Do not copy image metadata into private template configs unless you are intentionally adding or changing an image profile.
+Do not copy image metadata into private template configs unless you are intentionally adding or changing an image profile. Validation rejects template configs that set profile-owned image metadata, including `CLOUDINIT_USER`. The builder preserves the upstream guest filesystem layout; workload-specific Proxmox disk sizing and controller tuning belong downstream in provisioning.
 
 ## Validate And Build
 

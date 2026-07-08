@@ -4,6 +4,8 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
+- Image profiles now declare expected QEMU guest-agent support and upstream filesystem layout metadata. Validation requires full guest preparation and the Proxmox agent flag when a profile expects QEMU guest-agent support, and rejects profile-owned image metadata when it is set in template configs. Existing private configs that copied `CLOUDINIT_USER` or image metadata should remove those keys and keep them in image profiles.
+
 ## v1.4.1 - 2026-05-21
 
 - Smoke-test diagnostics and cleanup now require a per-run ownership marker before acting on the configured smoke-test VMID, so pre-existing VMs are not inspected or cleaned up after a failed smoke-test `prepare` step.

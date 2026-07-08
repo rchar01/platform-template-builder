@@ -61,6 +61,17 @@ require_one_of() {
   die "${name} must be one of: $*"
 }
 
+reject_profile_variable_in_config() {
+  local name=$1
+  local line
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?${name}[[:space:]]*= ]]; then
+      die "Template config must not set image profile variable ${name}"
+    fi
+  done <"$CONFIG_FILE"
+}
+
 resolve_profile_file() {
   local profile=$1
   local root_dir=$2
@@ -91,6 +102,15 @@ fi
 
 info "Validating config ${CONFIG_FILE}"
 
+reject_profile_variable_in_config IMAGE_URL
+reject_profile_variable_in_config IMAGE_NAME
+reject_profile_variable_in_config IMAGE_SHA256
+reject_profile_variable_in_config IMAGE_SHA512
+reject_profile_variable_in_config IMAGE_OS_FAMILY
+reject_profile_variable_in_config IMAGE_EXPECTS_QEMU_AGENT
+reject_profile_variable_in_config IMAGE_FILESYSTEM_LAYOUT
+reject_profile_variable_in_config CLOUDINIT_USER
+
 set -a
 # shellcheck source=/dev/null
 . "$CONFIG_FILE"
@@ -99,11 +119,12 @@ set +a
 require_var IMAGE_PROFILE
 PROFILE_FILE=$(resolve_profile_file "$IMAGE_PROFILE" "$ROOT_DIR") || die "Image profile not found: ${IMAGE_PROFILE}"
 
+unset IMAGE_URL IMAGE_NAME IMAGE_SHA256 IMAGE_SHA512 IMAGE_OS_FAMILY
+unset IMAGE_EXPECTS_QEMU_AGENT IMAGE_FILESYSTEM_LAYOUT CLOUDINIT_USER
+
 set -a
 # shellcheck source=/dev/null
 . "$PROFILE_FILE"
-# shellcheck source=/dev/null
-. "$CONFIG_FILE"
 set +a
 
 required_vars=(
@@ -113,6 +134,8 @@ required_vars=(
   IMAGE_URL
   IMAGE_NAME
   IMAGE_OS_FAMILY
+  IMAGE_EXPECTS_QEMU_AGENT
+  IMAGE_FILESYSTEM_LAYOUT
   PROXMOX_HOST
   PROXMOX_REMOTE_DIR
   DISK_STORAGE
@@ -141,6 +164,7 @@ is_number "$MEMORY_MB" || die "MEMORY_MB must be numeric"
 (( MEMORY_MB >= 512 )) || die "MEMORY_MB must be >= 512"
 
 is_bool "$ENABLE_QEMU_AGENT" || die "ENABLE_QEMU_AGENT must be true or false"
+is_bool "$IMAGE_EXPECTS_QEMU_AGENT" || die "IMAGE_EXPECTS_QEMU_AGENT must be true or false"
 is_bool "$FORCE_RECREATE" || die "FORCE_RECREATE must be true or false"
 is_safe_remote_dir "$PROXMOX_REMOTE_DIR" || die "PROXMOX_REMOTE_DIR must be an absolute path with safe characters and no dot path segments"
 if [[ -n "${PREPARE_GUEST_IMAGE:-}" ]]; then
@@ -160,6 +184,15 @@ fi
 require_one_of BIOS_TYPE "$BIOS_TYPE" seabios ovmf
 require_one_of DISK_BUS "$DISK_BUS" scsi
 require_one_of IMAGE_OS_FAMILY "$IMAGE_OS_FAMILY" debian rhel
+require_one_of IMAGE_FILESYSTEM_LAYOUT "$IMAGE_FILESYSTEM_LAYOUT" unknown plain-ext4 plain-xfs lvm-ext4 lvm-xfs other
+
+effective_prepare_guest_image=${PREPARE_GUEST_IMAGE:-true}
+effective_guest_prep_mode=${GUEST_PREP_MODE:-full}
+if [[ "$IMAGE_EXPECTS_QEMU_AGENT" == "true" ]]; then
+  [[ "$ENABLE_QEMU_AGENT" == "true" ]] || die "IMAGE_EXPECTS_QEMU_AGENT=true requires ENABLE_QEMU_AGENT=true"
+  [[ "$effective_prepare_guest_image" == "true" ]] || die "IMAGE_EXPECTS_QEMU_AGENT=true requires PREPARE_GUEST_IMAGE=true"
+  [[ "$effective_guest_prep_mode" == "full" ]] || die "IMAGE_EXPECTS_QEMU_AGENT=true requires GUEST_PREP_MODE=full"
+fi
 
 checksum_count=0
 if [[ -n "${IMAGE_SHA256:-}" ]]; then
@@ -190,5 +223,7 @@ printf '\n'
 printf 'Image:\n'
 printf '  Profile: %s\n' "$IMAGE_PROFILE"
 printf '  OS family: %s\n' "$IMAGE_OS_FAMILY"
+printf '  Expects QEMU guest agent: %s\n' "$IMAGE_EXPECTS_QEMU_AGENT"
+printf '  Filesystem layout: %s\n' "$IMAGE_FILESYSTEM_LAYOUT"
 printf '  URL: %s\n' "$IMAGE_URL"
 printf '  File: %s\n' "$IMAGE_NAME"

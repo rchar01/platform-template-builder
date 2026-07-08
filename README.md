@@ -245,7 +245,7 @@ Proxmox node:
 
 `virt-customize` and `virt-sysprep` are provided by `libguestfs-tools` on Proxmox/Debian. Installing that package may pull a sizable dependency set. Set `GUEST_PREP_MODE="safe"` only when you need copy-only preparation that does not require `libguestfs-tools`.
 
-Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP_MODE="full"`. Full mode copies the upstream image, installs/enables cloud-init, QEMU guest agent, SSH, NetworkManager, and serial console services, then removes stale cloud-init state, SSH host keys, network profiles, logs, and machine identity before import. Safe mode only copies the upstream image with `qemu-img` and does not mount or mutate the guest filesystem.
+Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP_MODE="full"`. Full mode copies the upstream image, installs/enables cloud-init, QEMU guest agent, SSH, NetworkManager, and serial console services, then removes stale cloud-init state, SSH host keys, network profiles, logs, and machine identity before import. Safe mode only copies the upstream image with `qemu-img` and does not mount or mutate the guest filesystem, so it is not the reusable-template path for image profiles that expect QEMU guest-agent support.
 
 Template console mode defaults to `TEMPLATE_CONSOLE_MODE="vga-serial"`, which keeps a serial port attached but uses normal VGA/noVNC output for debugging. Set `TEMPLATE_CONSOLE_MODE="serial"` only after serial-only guest console behavior is proven for the image.
 
@@ -303,7 +303,7 @@ Template configs reference committed image profiles under `configs/images/`:
 IMAGE_PROFILE="configs/images/rocky-9.env"
 ```
 
-Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, exactly one required checksum (`IMAGE_SHA256` or `IMAGE_SHA512`), `IMAGE_OS_FAMILY`, and the default cloud-init user for that OS.
+Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, exactly one required checksum (`IMAGE_SHA256` or `IMAGE_SHA512`), `IMAGE_OS_FAMILY`, `IMAGE_EXPECTS_QEMU_AGENT`, `IMAGE_FILESYSTEM_LAYOUT`, and `CLOUDINIT_USER`. Template configs select an image profile but must not redefine profile-owned metadata; validation fails if they do. The filesystem layout value records the upstream image layout; the builder does not intentionally convert ext4, XFS, LVM, or other guest disk layouts.
 
 ## Usage
 
