@@ -10,7 +10,7 @@ SMOKE_TEST_VMID ?= 9900
 
 export SSH_EMPTY_PASSPHRASE SSH_WRITE_CONFIG SSH_TEST SSH_PRINT_PUBLIC_KEY
 
-.PHONY: help verify syntax shellcheck init-ssh check-tools \
+.PHONY: help verify syntax shellcheck init-ssh check-images check-tools \
 	validate build smoke-test cleanup-smoke-test cleanup \
 	check-config check-ssh-config
 
@@ -56,7 +56,11 @@ init-ssh: check-ssh-config
 	if is_truthy "$${SSH_PRINT_PUBLIC_KEY:-}"; then args="$$args --print-public-key"; fi; \
 	PLATFORM_SSH_INIT="$(PLATFORM_SSH_INIT)" ./scripts/init-proxmox-ssh.sh "$(SSH_CONFIG)" $$args
 
-## Check required local tools, and remote tools if config exists
+## Check committed image URLs from this machine
+check-images:
+	./scripts/check-image-urls.sh
+
+## Check required tools and selected image availability if config exists
 check-tools:
 	@if [ -f "$(CONFIG)" ]; then \
 		TEMPLATE_BUILDER_SSH_CONFIG="$(SSH_CONFIG)" ./scripts/check-tools.sh "$(CONFIG)"; \

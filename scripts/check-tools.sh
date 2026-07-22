@@ -67,6 +67,48 @@ check_remote_proxmox_marker() {
   fi
 }
 
+check_remote_image() {
+  local image_path="${PROXMOX_REMOTE_DIR}/.cache/images/${IMAGE_NAME}"
+  local quoted_image_path
+  local quoted_image_url
+  local quoted_checksum
+  local checksum_tool
+
+  quoted_image_path=$(ptb_shell_quote "$image_path")
+  quoted_image_url=$(ptb_shell_quote "$IMAGE_URL")
+
+  if [[ -n "${IMAGE_SHA256:-}" ]]; then
+    checksum_tool=sha256sum
+    quoted_checksum=$(ptb_shell_quote "$IMAGE_SHA256")
+  else
+    checksum_tool=sha512sum
+    quoted_checksum=$(ptb_shell_quote "$IMAGE_SHA512")
+  fi
+
+  # shellcheck disable=SC2029
+  if ssh_transport_ssh "test -f ${quoted_image_path}"; then
+    info "Checking cached image checksum on ${SSH_TRANSPORT_DISPLAY}: ${image_path}"
+    # shellcheck disable=SC2029
+    if ssh_transport_ssh "printf '%s  %s\\n' ${quoted_checksum} ${quoted_image_path} | ${checksum_tool} -c - >/dev/null"; then
+      ok "Cached image checksum valid on ${SSH_TRANSPORT_DISPLAY}: ${IMAGE_NAME}"
+    else
+      error "Cached image checksum invalid on ${SSH_TRANSPORT_DISPLAY}: ${image_path}"
+      error "Remove the invalid cached image before building"
+      MISSING=1
+    fi
+    return
+  fi
+
+  info "Checking image URL from ${SSH_TRANSPORT_DISPLAY}: ${IMAGE_URL}"
+  # shellcheck disable=SC2029
+  if ssh_transport_ssh "if command -v curl >/dev/null 2>&1; then curl -fsSIL --connect-timeout 10 --max-time 30 ${quoted_image_url} -o /dev/null; elif command -v wget >/dev/null 2>&1; then wget --spider -q --timeout=30 --tries=1 ${quoted_image_url}; else exit 127; fi"; then
+    ok "Image URL available from ${SSH_TRANSPORT_DISPLAY}: ${IMAGE_URL}"
+  else
+    error "Image URL unavailable from ${SSH_TRANSPORT_DISPLAY}: ${IMAGE_URL}"
+    MISSING=1
+  fi
+}
+
 if [[ $# -gt 1 ]]; then
   usage
   exit 2
@@ -172,6 +214,7 @@ else
 fi
 
 check_remote_proxmox_marker
+check_remote_image
 
 PREPARE_GUEST_IMAGE=${PREPARE_GUEST_IMAGE:-true}
 GUEST_PREP_MODE=${GUEST_PREP_MODE:-full}
@@ -192,7 +235,7 @@ elif [[ "$PREPARE_GUEST_IMAGE" != "false" ]]; then
 fi
 
 if [[ "$MISSING" -ne 0 ]]; then
-  die "One or more required tools are missing"
+  die "One or more preflight checks failed"
 fi
 
-ok "Tool check complete"
+ok "Tool and image preflight checks complete"

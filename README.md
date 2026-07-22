@@ -312,6 +312,7 @@ Use Make for normal local operation:
 
 ```bash
 make check-tools TEMPLATE=rocky-9
+make check-images
 make validate TEMPLATE=rocky-9
 make build TEMPLATE=rocky-9
 make smoke-test TEMPLATE=rocky-9 \
@@ -323,7 +324,9 @@ make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900
 make cleanup TEMPLATE=rocky-9
 ```
 
-`make check-tools` checks local build and SSH transport tools first. If `configs/<TEMPLATE>-cloud-base.env` exists, it also checks the configured Proxmox host over SSH. Smoke-test-only local tools such as `ssh-keygen` and `timeout` are checked by `make smoke-test` when that workflow starts.
+`make check-images` checks every committed image URL from the local machine without downloading the image body. `make check-tools` checks local build and SSH transport tools first. If `configs/<TEMPLATE>-cloud-base.env` exists, it also checks the configured Proxmox host over SSH. When the selected image is cached remotely, `check-tools` verifies its committed checksum; otherwise, it checks the image URL from the Proxmox node. Smoke-test-only local tools such as `ssh-keygen` and `timeout` are checked by `make smoke-test` when that workflow starts.
+
+Builds download or verify the selected cached image before replacing an existing `TEMPLATE_VMID`, so an unavailable image or checksum mismatch cannot trigger `FORCE_RECREATE` destruction first. A valid cached image remains usable when the upstream URL is temporarily unavailable.
 
 `make smoke-test` clones a temporary VM from the template, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks cloud-init and guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Remote preparation failures and QEMU guest-agent timeouts print Proxmox diagnostics and keep the failed VM automatically for noVNC/console debugging. `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly is clearer.
 
@@ -347,6 +350,7 @@ Direct script usage is also available:
 
 ```bash
 ./scripts/check-tools.sh configs/rocky-9-cloud-base.env
+./scripts/check-image-urls.sh
 ./scripts/validate-config.sh configs/rocky-9-cloud-base.env
 ./scripts/remote-run-template-build.sh configs/rocky-9-cloud-base.env
 ./scripts/smoke-test-template.sh configs/rocky-9-cloud-base.env

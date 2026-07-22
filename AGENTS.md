@@ -53,6 +53,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Show supported targets: `make help`.
 - Initialize local SSH key/config helper when `platform-ssh-init` is installed: `make init-ssh SSH_CONFIG=configs/ssh/template-builder.env`.
 - Check local tools, and remote tools if the private config exists: `make check-tools TEMPLATE=rocky-9`.
+- Check all committed image URLs without downloading image bodies: `make check-images`.
 - Validate a private config: `make validate TEMPLATE=rocky-9`.
 - Build remotely through SSH/rsync: `make build TEMPLATE=rocky-9`.
 - Smoke-test a built template with private temporary IP/key values: `make smoke-test TEMPLATE=rocky-9 SMOKE_TEST_IPV4=... SMOKE_TEST_GATEWAY=... SMOKE_TEST_DNS=... SMOKE_TEST_SSH_KEY=...`.

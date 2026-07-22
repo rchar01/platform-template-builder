@@ -209,6 +209,7 @@ GUEST_PREP_MODE=${GUEST_PREP_MODE:-full}
 GUEST_PREP_TIMEOUT_SECONDS=${GUEST_PREP_TIMEOUT_SECONDS:-1800}
 TEMPLATE_CONSOLE_MODE=${TEMPLATE_CONSOLE_MODE:-vga-serial}
 IMPORT_IMAGE_PATH=$IMAGE_PATH
+REPLACE_EXISTING_VM=false
 
 info "Checking Proxmox environment"
 [[ -d /etc/pve ]] || die "This script must run on a Proxmox node; /etc/pve is missing"
@@ -249,13 +250,17 @@ ip link show "$BRIDGE" >/dev/null 2>&1 || die "Bridge ${BRIDGE} does not exist; 
 
 if vm_exists; then
   if [[ "$FORCE_RECREATE" == "true" ]]; then
-    destroy_existing_vm
+    REPLACE_EXISTING_VM=true
   else
     die "VMID ${TEMPLATE_VMID} already exists. Use a different TEMPLATE_VMID or set FORCE_RECREATE=true after verifying it is safe."
   fi
 fi
 
 download_image
+
+if [[ "$REPLACE_EXISTING_VM" == "true" ]]; then
+  destroy_existing_vm
+fi
 
 if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
   prepare_guest_image

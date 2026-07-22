@@ -94,10 +94,13 @@ Likely cause: The Proxmox node cannot reach the image URL, DNS is unavailable, o
 Check:
 
 ```bash
-ssh pve-template-builder 'curl -I https://download.rockylinux.org/'
+make check-images
+make check-tools TEMPLATE=rocky-9
 ```
 
-Fix: Restore network access, update `IMAGE_URL`, or pre-cache the image under `.cache/images/` on the remote build directory.
+`make check-images` checks all committed URLs from the workstation. With a private template config, `make check-tools` verifies a valid cached image or checks the selected URL from the Proxmox node.
+
+Fix: Restore network access, update `IMAGE_URL`, or pre-cache a checksum-valid image under `.cache/images/` on the remote build directory. Remove a cached image when the preflight reports that its checksum is invalid.
 
 ## Disk Import Succeeds But Attach Fails
 

@@ -7,8 +7,14 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `make check-images` checks every committed image URL without downloading image bodies, while `make check-tools` verifies the selected remote cache or checks its URL from the Proxmox node.
+
 ### Changed
 
+- Builds now download or verify the selected image before forced template replacement, preventing image failures from destroying an existing template first.
+- Rocky 10.1 now uses the versioned Vault image because Rocky retired the previous active-release URL; the published SHA-256 remains unchanged.
 - Image profiles now declare expected QEMU guest-agent support and upstream filesystem layout metadata. Validation requires `ENABLE_QEMU_AGENT=true`, `PREPARE_GUEST_IMAGE=true`, and `GUEST_PREP_MODE=full` when a profile sets `IMAGE_EXPECTS_QEMU_AGENT=true`, and rejects profile-owned image metadata when it is set in template configs. Existing private configs that copied `CLOUDINIT_USER` or image metadata should remove those keys and keep them in image profiles.
 
 ## [1.4.1] - 2026-05-21
