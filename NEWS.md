@@ -4,8 +4,11 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
+## v1.4.2 - 2026-07-22
+
 - Image preflights now check committed URLs, verify selected remote caches, and validate images before forced template replacement. Rocky 10.1 now uses its versioned Vault image after the old active-release URL was retired.
 - Image profiles now declare expected QEMU guest-agent support and upstream filesystem layout metadata. Validation requires full guest preparation and the Proxmox agent flag when a profile expects QEMU guest-agent support, and rejects profile-owned image metadata when it is set in template configs. Existing private configs that copied `CLOUDINIT_USER` or image metadata should remove those keys and keep them in image profiles.
+- Failed automatic smoke-test cleanup now reports the failure and preserves its ownership marker for an explicit cleanup retry.
 
 ## v1.4.1 - 2026-05-21
 
