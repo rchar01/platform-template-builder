@@ -153,9 +153,12 @@ a new Rocky minor release.
 
 ## Validate And Build
 
-After editing the private template config:
+After editing the private template config, run the local and remote preflights
+before any build that may replace an existing template:
 
 ```bash
+make verify
+make shellcheck
 make validate TEMPLATE=rocky-10.1
 make check-tools TEMPLATE=rocky-10.1
 make build TEMPLATE=rocky-10.1

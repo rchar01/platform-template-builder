@@ -251,8 +251,10 @@ Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP
 The Rocky 10.1 profile is exact-minor pinned. Full preparation verifies
 `VERSION_ID=10.1`, installs packages only from its direct 10.1 Vault BaseOS and
 AppStream repositories, writes `/etc/dnf/vars/releasever` as `10.1`, and verifies
-the version again before replacing or importing a template. This prevents later
-DNF operations in clones from silently advancing to Rocky 10.2. Rocky Vault is
+the version again before replacing or importing a template. The profile also
+selects the guest-local Rocky signing key used to verify installed packages.
+Templates set Proxmox `ciupgrade=0`, so first boot does not silently advance to
+Rocky 10.2 before downstream configuration. Rocky Vault is
 historical and unsupported, so exact-minor pinning trades current security
 updates for repeatable 10.1 behavior until the profile is deliberately advanced.
 
@@ -312,7 +314,7 @@ Template configs reference committed image profiles under `configs/images/`:
 IMAGE_PROFILE="configs/images/rocky-9.env"
 ```
 
-Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, exactly one required checksum (`IMAGE_SHA256` or `IMAGE_SHA512`), `IMAGE_OS_FAMILY`, optional exact-version and package-repository pins, `IMAGE_EXPECTS_QEMU_AGENT`, `IMAGE_FILESYSTEM_LAYOUT`, and `CLOUDINIT_USER`. Template configs select an image profile but must not redefine profile-owned metadata; validation fails if they do. The filesystem layout value records the upstream image layout; the builder does not intentionally convert ext4, XFS, LVM, or other guest disk layouts.
+Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, exactly one required checksum (`IMAGE_SHA256` or `IMAGE_SHA512`), `IMAGE_OS_FAMILY`, `IMAGE_EXPECTS_QEMU_AGENT`, `IMAGE_FILESYSTEM_LAYOUT`, and `CLOUDINIT_USER`. A profile may independently declare an expected guest version. Pinned DNF profiles must define the release, BaseOS and AppStream repositories, and guest-local signing key as one complete set, and the release must match the expected guest version. Template configs select an image profile but must not redefine profile-owned metadata. The filesystem layout value records the upstream image layout; the builder does not intentionally convert ext4, XFS, LVM, or other guest disk layouts.
 
 ## Usage
 

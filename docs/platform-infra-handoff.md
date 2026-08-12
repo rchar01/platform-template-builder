@@ -20,6 +20,7 @@ Disk bus: scsi
 SCSI controller: virtio-scsi-pci
 Console: vga std plus serial0 socket
 QEMU guest agent: enabled
+Cloud-init package upgrades: disabled (`ciupgrade=0`)
 Expected guest VERSION_ID: 10.1
 Persistent DNF releasever: 10.1
 ```
@@ -90,6 +91,8 @@ Set cloud-init data for each cloned VM:
 - Networking should use a real workload IP or DHCP plan owned by `platform-infra`; never reuse smoke-test addresses.
 - DNS and search domain should match the target environment.
 - Keep `citype: nocloud` unless the template family changes and has been revalidated.
+- Keep automatic cloud-init package upgrades disabled; package lifecycle belongs
+  in the explicitly reviewed downstream configuration workflow.
 
 Do not assume any smoke-test address is available for workloads. Smoke-test addresses are temporary validation inputs and should stay separate from workload IP allocation.
 

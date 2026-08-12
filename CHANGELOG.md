@@ -9,16 +9,20 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Added optional exact guest `VERSION_ID` and pinned RHEL-family package
-  repository metadata to committed image profiles.
+- Added optional exact guest `VERSION_ID` metadata and an atomic pinned
+  RHEL-family DNF repository, release, and guest-local signing-key set to
+  committed image profiles.
 - Added local tests for exact-version command construction and profile
   validation.
 
 ### Changed
 
 - Rocky 10.1 full preparation now installs packages only from direct 10.1 Vault
-  BaseOS and AppStream repositories, persists `releasever=10.1`, and asserts the
-  exact guest version before and after preparation and in smoke-test clones.
+  BaseOS and AppStream repositories with package signature verification,
+  persists `releasever=10.1`, and asserts the exact guest version before and
+  after preparation and in smoke-test clones.
+- Templates and smoke-test clones now disable Proxmox cloud-init package
+  upgrades so first boot retains the prepared guest release.
 - Forced recreation now prepares and validates the replacement image before
   destroying an existing template.
 

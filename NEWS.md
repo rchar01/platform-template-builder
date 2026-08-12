@@ -5,8 +5,11 @@ This file gives a short, release-oriented view of what changed between versions.
 ## Unreleased
 
 - Rocky 10.1 template preparation now verifies the exact guest version, uses
-  direct 10.1 Vault repositories for package installation, persists the DNF
-  release pin in clones, and rechecks the version during smoke tests.
+  direct 10.1 Vault repositories and the profile-selected guest signing key for
+  package installation, persists the DNF release pin in clones, and rechecks the
+  version during smoke tests.
+- Templates and smoke-test clones now disable Proxmox cloud-init package
+  upgrades so first boot does not advance the reviewed guest release.
 - Forced replacement now waits until image preparation and exact-version checks
   succeed before destroying an existing template.
 
