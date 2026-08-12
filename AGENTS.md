@@ -59,7 +59,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Smoke-test a built template with private temporary IP/key values: `make smoke-test TEMPLATE=rocky-9 SMOKE_TEST_IPV4=... SMOKE_TEST_GATEWAY=... SMOKE_TEST_DNS=... SMOKE_TEST_SSH_KEY=...`.
 - Cleanup only the configured smoke-test VMID: `make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900`.
 - Cleanup only the configured VMID: `make cleanup TEMPLATE=rocky-9`.
-- Syntax verification only: `make verify`.
+- Local syntax and contract verification: `make verify`.
 - ShellCheck verification: `make shellcheck`.
 - Validate an example without creating a private env: `make validate CONFIG=configs/rocky-9-cloud-base.env.example`.
 
@@ -73,7 +73,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Private `configs/*-cloud-base.env` files are ignored and must not be committed.
 - Private `configs/ssh/*.env` files are ignored and must not be committed.
 - Real config values may live outside this repository in `platform-private`; keep committed files here as examples only.
-- Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`. Include `IMAGE_OS_FAMILY` so guest preparation can choose package and service names, `IMAGE_EXPECTS_QEMU_AGENT` so validation can require matching full-prep/QGA settings, `IMAGE_FILESYSTEM_LAYOUT` so docs describe the upstream guest layout, and exactly one checksum field (`IMAGE_SHA256` or `IMAGE_SHA512`) so builds verify images before import.
+- Committed image metadata belongs in `configs/images/*.env`; template configs reference it with `IMAGE_PROFILE`. Include `IMAGE_OS_FAMILY` so guest preparation can choose package and service names, `IMAGE_EXPECTS_QEMU_AGENT` so validation can require matching full-prep/QGA settings, `IMAGE_FILESYSTEM_LAYOUT` so docs describe the upstream guest layout, and exactly one checksum field (`IMAGE_SHA256` or `IMAGE_SHA512`) so builds verify images before import. Exact-minor RHEL profiles must own `IMAGE_EXPECTED_VERSION_ID` and the complete `IMAGE_DNF_RELEASEVER`, `IMAGE_DNF_BASEOS_URL`, `IMAGE_DNF_APPSTREAM_URL`, and `IMAGE_DNF_GPGKEY` set; never weaken those fields in private template config.
 - Template configs should default `TEMPLATE_CONSOLE_MODE` to `vga-serial` so noVNC remains usable when networking or QEMU guest agent startup fails.
 - Template configs should default `GUEST_PREP_MODE` to `full` so clones receive fresh cloud-init state, machine identity, and SSH host keys; use `safe` only for copy-only troubleshooting.
 - Rocky/RHEL 10 template configs should set `CPU_TYPE="host"` unless another x86-64-v3-capable Proxmox CPU model is deliberately chosen.
@@ -81,7 +81,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 
 ## Verification Notes
 
-- `make verify` only runs `bash -n scripts/*.sh`; run `make shellcheck` after script edits.
+- `make verify` runs script syntax and local contract tests; run `make shellcheck` after script edits.
 - `make check-tools` can legitimately fail on a workstation missing `rsync`; that is a real prerequisite for remote builds.
 - Full guest image preparation requires `qemu-img`, `virt-customize`, and `virt-sysprep` on the Proxmox build host; `virt-customize` and `virt-sysprep` come from `libguestfs-tools` on Proxmox/Debian. Safe copy-only preparation requires only `qemu-img`.
 - Remote build verification requires a real private config and SSH access to `PROXMOX_HOST`; do not fake a successful Proxmox run.

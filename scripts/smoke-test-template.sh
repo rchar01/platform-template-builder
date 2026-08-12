@@ -329,7 +329,7 @@ info "Waiting for SSH as ${SMOKE_TEST_USER}@${SMOKE_TEST_IP_ONLY}"
 deadline=$((SECONDS + SMOKE_TEST_BOOT_TIMEOUT_SECONDS))
 until guest_ssh true >/dev/null 2>&1; do
   if (( SECONDS >= deadline )); then
-    die "Timed out waiting for SSH to ${SMOKE_TEST_USER}@${SMOKE_TEST_IP_ONLY}"
+    fail_keep_vm "Timed out waiting for SSH to ${SMOKE_TEST_USER}@${SMOKE_TEST_IP_ONLY}; kept VM for inspection"
   fi
   sleep 5
 done
@@ -339,6 +339,13 @@ info "Checking cloud-init and guest services"
 guest_cloud_init_wait "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS"
 guest_ssh_timeout "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" "systemctl is-active '${SMOKE_TEST_SSH_SERVICE}'" >/dev/null
 ok "cloud-init and SSH service are healthy"
+
+if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then
+  expected_version=$(ptb_shell_quote "$IMAGE_EXPECTED_VERSION_ID")
+  guest_ssh ". /etc/os-release && test \"\${VERSION_ID:-}\" = ${expected_version}" ||
+    fail_keep_vm "Guest VERSION_ID does not match ${IMAGE_EXPECTED_VERSION_ID} after cloud-init; kept VM for inspection"
+  ok "Guest VERSION_ID matches ${IMAGE_EXPECTED_VERSION_ID} after cloud-init"
+fi
 
 run_remote_smoke_action qga-check || fail_keep_vm "QEMU guest-agent checks failed; kept VM for console/noVNC debugging"
 guest_ssh "systemctl is-active qemu-guest-agent" >/dev/null

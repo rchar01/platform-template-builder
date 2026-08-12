@@ -301,6 +301,7 @@ prepare_smoke_vm() {
     --net0 "virtio,bridge=${SMOKE_TEST_BRIDGE}" \
     --agent enabled=1 \
     --citype nocloud \
+    --ciupgrade 0 \
     --ciuser "$SMOKE_TEST_USER" \
     --ipconfig0 "ip=${SMOKE_TEST_IPV4},gw=${SMOKE_TEST_GATEWAY}" \
     --nameserver "$SMOKE_TEST_DNS" \

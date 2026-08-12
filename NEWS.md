@@ -4,6 +4,12 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
+- Rocky 10.1 template preparation now verifies the exact guest version, uses
+  direct 10.1 Vault repositories for package installation, persists the DNF
+  release pin in clones, and rechecks the version during smoke tests.
+- Forced replacement now waits until image preparation and exact-version checks
+  succeed before destroying an existing template.
+
 ## v1.4.2 - 2026-07-22
 
 - Image preflights now check committed URLs, verify selected remote caches, and validate images before forced template replacement. Rocky 10.1 now uses its versioned Vault image after the old active-release URL was retired.

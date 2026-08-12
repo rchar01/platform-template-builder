@@ -12,8 +12,10 @@ usage() {
 
 check_profile_url() (
   local profile_file=$1
+  local url
 
   unset IMAGE_URL IMAGE_NAME IMAGE_SHA256 IMAGE_SHA512
+  unset IMAGE_DNF_BASEOS_URL IMAGE_DNF_APPSTREAM_URL IMAGE_DNF_GPGKEY
   set -a
   # shellcheck source=/dev/null
   . "$profile_file"
@@ -29,6 +31,17 @@ check_profile_url() (
     wget --spider -q --timeout=30 --tries=1 "$IMAGE_URL"
   fi
   ok "Image URL available: ${IMAGE_URL}"
+
+  for url in "${IMAGE_DNF_BASEOS_URL:-}" "${IMAGE_DNF_APPSTREAM_URL:-}"; do
+    [[ -n "$url" ]] || continue
+    info "Checking pinned package repository ${url}"
+    if [[ "$DOWNLOAD_TOOL" == "curl" ]]; then
+      curl -fsSIL --connect-timeout 10 --max-time 30 "${url}repodata/repomd.xml" -o /dev/null
+    else
+      wget --spider -q --timeout=30 --tries=1 "${url}repodata/repomd.xml"
+    fi
+    ok "Pinned package repository available: ${url}"
+  done
 )
 
 if [[ $# -gt 0 && "$1" == "--help" ]]; then

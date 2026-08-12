@@ -109,6 +109,24 @@ check_remote_image() {
   fi
 }
 
+check_remote_package_repositories() {
+  local repository_url
+  local quoted_url
+
+  for repository_url in "${IMAGE_DNF_BASEOS_URL:-}" "${IMAGE_DNF_APPSTREAM_URL:-}"; do
+    [[ -n "$repository_url" ]] || continue
+    quoted_url=$(ptb_shell_quote "${repository_url}repodata/repomd.xml")
+    info "Checking pinned package repository from ${SSH_TRANSPORT_DISPLAY}: ${repository_url}"
+    # shellcheck disable=SC2029
+    if ssh_transport_ssh "if command -v curl >/dev/null 2>&1; then curl -fsSIL --connect-timeout 10 --max-time 30 ${quoted_url} -o /dev/null; elif command -v wget >/dev/null 2>&1; then wget --spider -q --timeout=30 --tries=1 ${quoted_url}; else exit 127; fi"; then
+      ok "Pinned package repository available from ${SSH_TRANSPORT_DISPLAY}: ${repository_url}"
+    else
+      error "Pinned package repository unavailable from ${SSH_TRANSPORT_DISPLAY}: ${repository_url}"
+      MISSING=1
+    fi
+  done
+}
+
 if [[ $# -gt 1 ]]; then
   usage
   exit 2
@@ -215,6 +233,7 @@ fi
 
 check_remote_proxmox_marker
 check_remote_image
+check_remote_package_repositories
 
 PREPARE_GUEST_IMAGE=${PREPARE_GUEST_IMAGE:-true}
 GUEST_PREP_MODE=${GUEST_PREP_MODE:-full}

@@ -135,11 +135,21 @@ Image profiles are committed files under `configs/images/`. Template configs ref
 | `IMAGE_NAME` | Committed image profile. |
 | `IMAGE_SHA256` / `IMAGE_SHA512` | Committed image profile; exactly one is required and is verified before image import. |
 | `IMAGE_OS_FAMILY` | Committed image profile; currently `rhel` or `debian` for guest preparation package/service names. |
+| `IMAGE_EXPECTED_VERSION_ID` | Optional committed exact `/etc/os-release` `VERSION_ID`; asserted before package preparation, before template replacement, and during clone smoke tests. |
+| `IMAGE_DNF_RELEASEVER` | Optional exact DNF release variable; must match `IMAGE_EXPECTED_VERSION_ID` and is persisted in the prepared image. |
+| `IMAGE_DNF_BASEOS_URL` / `IMAGE_DNF_APPSTREAM_URL` | Optional direct HTTPS repositories used exclusively for pinned RHEL-family package preparation; both are required with `IMAGE_DNF_RELEASEVER`. |
+| `IMAGE_DNF_GPGKEY` | Guest-local `file:///` signing-key URI used to verify packages from both pinned repositories; required with the other DNF pins. |
 | `IMAGE_EXPECTS_QEMU_AGENT` | Committed image profile; `true` requires `ENABLE_QEMU_AGENT=true`, `PREPARE_GUEST_IMAGE=true`, and `GUEST_PREP_MODE=full`. |
 | `IMAGE_FILESYSTEM_LAYOUT` | Committed image profile; inspected upstream guest layout, or `unknown` until verified. Allowed values are `unknown`, `plain-ext4`, `plain-xfs`, `lvm-ext4`, `lvm-xfs`, and `other`. |
 | `CLOUDINIT_USER` | Committed image profile default for the OS. |
 
 Do not copy image metadata into private template configs unless you are intentionally adding or changing an image profile. Validation rejects template configs that set profile-owned image metadata, including `CLOUDINIT_USER`. The builder preserves the upstream guest filesystem layout; workload-specific Proxmox disk sizing and controller tuning belong downstream in provisioning.
+
+Exact-minor DNF pins intentionally persist in clones. They prevent an old minor
+profile from silently consuming packages from a newer minor, but old Rocky Vault
+content is unsupported and does not receive current security fixes. Advance the
+profile and rebuild the template deliberately when the managed platform moves to
+a new Rocky minor release.
 
 ## Validate And Build
 

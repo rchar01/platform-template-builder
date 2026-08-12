@@ -246,7 +246,15 @@ Proxmox node:
 
 `virt-customize` and `virt-sysprep` are provided by `libguestfs-tools` on Proxmox/Debian. Installing that package may pull a sizable dependency set. Set `GUEST_PREP_MODE="safe"` only when you need copy-only preparation that does not require `libguestfs-tools`.
 
-Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP_MODE="full"`. Full mode copies the upstream image, installs/enables cloud-init, QEMU guest agent, SSH, NetworkManager, and serial console services, then removes stale cloud-init state, SSH host keys, network profiles, logs, and machine identity before import. Safe mode only copies the upstream image with `qemu-img` and does not mount or mutate the guest filesystem, so it is not the reusable-template path for image profiles that expect QEMU guest-agent support.
+Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP_MODE="full"`. Full mode copies the upstream image, installs/enables cloud-init, QEMU guest agent, SSH, NetworkManager, and serial console services, then removes stale cloud-init state, SSH host keys, network profiles, logs, and machine identity before import. Package installation customizes a shut-down image but still uses outbound libguestfs networking. Safe mode only copies the upstream image with `qemu-img` and does not mount or mutate the guest filesystem, so it is not the reusable-template path for image profiles that expect QEMU guest-agent support.
+
+The Rocky 10.1 profile is exact-minor pinned. Full preparation verifies
+`VERSION_ID=10.1`, installs packages only from its direct 10.1 Vault BaseOS and
+AppStream repositories, writes `/etc/dnf/vars/releasever` as `10.1`, and verifies
+the version again before replacing or importing a template. This prevents later
+DNF operations in clones from silently advancing to Rocky 10.2. Rocky Vault is
+historical and unsupported, so exact-minor pinning trades current security
+updates for repeatable 10.1 behavior until the profile is deliberately advanced.
 
 Template console mode defaults to `TEMPLATE_CONSOLE_MODE="vga-serial"`, which keeps a serial port attached but uses normal VGA/noVNC output for debugging. Set `TEMPLATE_CONSOLE_MODE="serial"` only after serial-only guest console behavior is proven for the image.
 
@@ -304,7 +312,7 @@ Template configs reference committed image profiles under `configs/images/`:
 IMAGE_PROFILE="configs/images/rocky-9.env"
 ```
 
-Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, exactly one required checksum (`IMAGE_SHA256` or `IMAGE_SHA512`), `IMAGE_OS_FAMILY`, `IMAGE_EXPECTS_QEMU_AGENT`, `IMAGE_FILESYSTEM_LAYOUT`, and `CLOUDINIT_USER`. Template configs select an image profile but must not redefine profile-owned metadata; validation fails if they do. The filesystem layout value records the upstream image layout; the builder does not intentionally convert ext4, XFS, LVM, or other guest disk layouts.
+Image profiles contain upstream image metadata such as `IMAGE_URL`, `IMAGE_NAME`, exactly one required checksum (`IMAGE_SHA256` or `IMAGE_SHA512`), `IMAGE_OS_FAMILY`, optional exact-version and package-repository pins, `IMAGE_EXPECTS_QEMU_AGENT`, `IMAGE_FILESYSTEM_LAYOUT`, and `CLOUDINIT_USER`. Template configs select an image profile but must not redefine profile-owned metadata; validation fails if they do. The filesystem layout value records the upstream image layout; the builder does not intentionally convert ext4, XFS, LVM, or other guest disk layouts.
 
 ## Usage
 
@@ -326,9 +334,9 @@ make cleanup TEMPLATE=rocky-9
 
 `make check-images` checks every committed image URL from the local machine without downloading the image body. `make check-tools` checks local build and SSH transport tools first. If `configs/<TEMPLATE>-cloud-base.env` exists, it also checks the configured Proxmox host over SSH. When the selected image is cached remotely, `check-tools` verifies its committed checksum; otherwise, it checks the image URL from the Proxmox node. Smoke-test-only local tools such as `ssh-keygen` and `timeout` are checked by `make smoke-test` when that workflow starts.
 
-Builds download or verify the selected cached image before replacing an existing `TEMPLATE_VMID`, so an unavailable image or checksum mismatch cannot trigger `FORCE_RECREATE` destruction first. A valid cached image remains usable when the upstream URL is temporarily unavailable.
+Builds download, verify, and prepare the selected image before replacing an existing `TEMPLATE_VMID`, so image, package, or exact-version failures cannot trigger `FORCE_RECREATE` destruction first. A valid cached image remains usable when the upstream image URL is temporarily unavailable, but full preparation still needs access to its selected package repositories.
 
-`make smoke-test` clones a temporary VM from the template, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks cloud-init and guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Remote preparation failures and QEMU guest-agent timeouts print Proxmox diagnostics and keep the failed VM automatically for noVNC/console debugging. `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly is clearer.
+`make smoke-test` clones a temporary VM from the template, disables cloud-init package upgrades, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks any profile-pinned exact guest version after cloud-init completes, checks guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Remote preparation failures and QEMU guest-agent timeouts print Proxmox diagnostics and keep the failed VM automatically for noVNC/console debugging. `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly is clearer.
 
 `make cleanup-smoke-test` destroys only `SMOKE_TEST_VMID`, force-stopping it first if needed so broken guests do not block cleanup on QEMU guest agent or ACPI shutdown. `make cleanup` destroys only `TEMPLATE_VMID` with the same destroy flow. Both require typing the target VMID unless `CLEANUP_ASSUME_YES=true` is set, and both use Proxmox purge cleanup plus unreferenced-disk cleanup when supported by the installed Proxmox version.
 

@@ -49,8 +49,55 @@ ptb_is_safe_file_name() {
   [[ "$1" =~ ^[A-Za-z0-9._-]+$ ]]
 }
 
+ptb_is_safe_version() {
+  [[ "$1" =~ ^[A-Za-z0-9._-]+$ ]]
+}
+
+ptb_is_https_url() {
+  [[ "$1" =~ ^https://[A-Za-z0-9._~:/=%+-]+$ ]]
+}
+
+ptb_is_file_url() {
+  [[ "$1" =~ ^file:///[A-Za-z0-9._~/%+-]+$ ]]
+}
+
 ptb_shell_quote() {
   printf "'%s'" "${1//\'/\'\"\'\"\'}"
+}
+
+ptb_guest_version_assertion() {
+  local expected_version
+
+  expected_version=$(ptb_shell_quote "$1")
+  # VERSION_ID must expand inside the guest shell, not while building the command.
+  # shellcheck disable=SC2016
+  printf '. /etc/os-release && test "${VERSION_ID:-}" = %s' "$expected_version"
+}
+
+ptb_rhel_package_install_command() {
+  local packages=$1
+  local releasever
+  local baseos_repo
+  local appstream_repo
+  local baseos_gpgkey
+  local appstream_gpgkey
+
+  releasever=$(ptb_shell_quote "$IMAGE_DNF_RELEASEVER")
+  baseos_repo=$(ptb_shell_quote "ptb-baseos,${IMAGE_DNF_BASEOS_URL}")
+  appstream_repo=$(ptb_shell_quote "ptb-appstream,${IMAGE_DNF_APPSTREAM_URL}")
+  baseos_gpgkey=$(ptb_shell_quote "ptb-baseos.gpgkey=${IMAGE_DNF_GPGKEY}")
+  appstream_gpgkey=$(ptb_shell_quote "ptb-appstream.gpgkey=${IMAGE_DNF_GPGKEY}")
+
+  printf '%s' "mkdir -p /etc/dnf/vars && "
+  printf '%s%s%s' "printf '%s\\n' " "$releasever" " > /etc/dnf/vars/releasever && "
+  printf '%s' "dnf -y --disablerepo='*' "
+  printf '%s ' "--repofrompath=${baseos_repo}" "--repofrompath=${appstream_repo}"
+  printf '%s ' \
+    "--setopt=ptb-baseos.gpgcheck=1" \
+    "--setopt=${baseos_gpgkey}" \
+    "--setopt=ptb-appstream.gpgcheck=1" \
+    "--setopt=${appstream_gpgkey}"
+  printf 'install %s' "${packages//,/ }"
 }
 
 ptb_require_var() {
@@ -100,6 +147,11 @@ ptb_load_template_config() {
   set +a
 
   PROFILE_FILE=$(ptb_resolve_profile_file "$IMAGE_PROFILE" "$root_dir") || ptb_die "Image profile not found: ${IMAGE_PROFILE}"
+
+  unset IMAGE_URL IMAGE_NAME IMAGE_SHA256 IMAGE_SHA512 IMAGE_OS_FAMILY
+  unset IMAGE_EXPECTED_VERSION_ID IMAGE_DNF_RELEASEVER
+  unset IMAGE_DNF_BASEOS_URL IMAGE_DNF_APPSTREAM_URL IMAGE_DNF_GPGKEY
+  unset IMAGE_EXPECTS_QEMU_AGENT IMAGE_FILESYSTEM_LAYOUT CLOUDINIT_USER
 
   set -a
   # shellcheck source=/dev/null

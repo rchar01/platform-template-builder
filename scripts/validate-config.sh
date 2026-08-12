@@ -42,6 +42,11 @@ reject_profile_variable_in_config IMAGE_NAME
 reject_profile_variable_in_config IMAGE_SHA256
 reject_profile_variable_in_config IMAGE_SHA512
 reject_profile_variable_in_config IMAGE_OS_FAMILY
+reject_profile_variable_in_config IMAGE_EXPECTED_VERSION_ID
+reject_profile_variable_in_config IMAGE_DNF_RELEASEVER
+reject_profile_variable_in_config IMAGE_DNF_BASEOS_URL
+reject_profile_variable_in_config IMAGE_DNF_APPSTREAM_URL
+reject_profile_variable_in_config IMAGE_DNF_GPGKEY
 reject_profile_variable_in_config IMAGE_EXPECTS_QEMU_AGENT
 reject_profile_variable_in_config IMAGE_FILESYSTEM_LAYOUT
 reject_profile_variable_in_config CLOUDINIT_USER
@@ -55,6 +60,8 @@ ptb_require_var IMAGE_PROFILE
 PROFILE_FILE=$(ptb_resolve_profile_file "$IMAGE_PROFILE" "$ROOT_DIR") || die "Image profile not found: ${IMAGE_PROFILE}"
 
 unset IMAGE_URL IMAGE_NAME IMAGE_SHA256 IMAGE_SHA512 IMAGE_OS_FAMILY
+unset IMAGE_EXPECTED_VERSION_ID IMAGE_DNF_RELEASEVER
+unset IMAGE_DNF_BASEOS_URL IMAGE_DNF_APPSTREAM_URL IMAGE_DNF_GPGKEY
 unset IMAGE_EXPECTS_QEMU_AGENT IMAGE_FILESYSTEM_LAYOUT CLOUDINIT_USER
 
 set -a
@@ -121,8 +128,35 @@ ptb_require_one_of DISK_BUS "$DISK_BUS" scsi
 ptb_require_one_of IMAGE_OS_FAMILY "$IMAGE_OS_FAMILY" debian rhel
 ptb_require_one_of IMAGE_FILESYSTEM_LAYOUT "$IMAGE_FILESYSTEM_LAYOUT" unknown plain-ext4 plain-xfs lvm-ext4 lvm-xfs other
 
+if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then
+  ptb_is_safe_version "$IMAGE_EXPECTED_VERSION_ID" || die "IMAGE_EXPECTED_VERSION_ID may contain only letters, numbers, dots, underscores, and dashes"
+fi
+
+dnf_pin_count=0
+for name in IMAGE_DNF_RELEASEVER IMAGE_DNF_BASEOS_URL IMAGE_DNF_APPSTREAM_URL IMAGE_DNF_GPGKEY; do
+  if [[ -n "${!name:-}" ]]; then
+    dnf_pin_count=$((dnf_pin_count + 1))
+  fi
+done
+if (( dnf_pin_count != 0 && dnf_pin_count != 4 )); then
+  die "Set IMAGE_DNF_RELEASEVER, IMAGE_DNF_BASEOS_URL, IMAGE_DNF_APPSTREAM_URL, and IMAGE_DNF_GPGKEY together"
+fi
+if (( dnf_pin_count == 4 )); then
+  [[ "$IMAGE_OS_FAMILY" == "rhel" ]] || die "IMAGE_DNF_* repository pins require IMAGE_OS_FAMILY=rhel"
+  [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]] || die "IMAGE_DNF_* repository pins require IMAGE_EXPECTED_VERSION_ID"
+  ptb_is_safe_version "$IMAGE_DNF_RELEASEVER" || die "IMAGE_DNF_RELEASEVER may contain only letters, numbers, dots, underscores, and dashes"
+  [[ "$IMAGE_DNF_RELEASEVER" == "$IMAGE_EXPECTED_VERSION_ID" ]] || die "IMAGE_DNF_RELEASEVER must match IMAGE_EXPECTED_VERSION_ID"
+  ptb_is_https_url "$IMAGE_DNF_BASEOS_URL" || die "IMAGE_DNF_BASEOS_URL must be a safe HTTPS URL"
+  ptb_is_https_url "$IMAGE_DNF_APPSTREAM_URL" || die "IMAGE_DNF_APPSTREAM_URL must be a safe HTTPS URL"
+  ptb_is_file_url "$IMAGE_DNF_GPGKEY" || die "IMAGE_DNF_GPGKEY must be a safe file:/// URL"
+fi
+
 effective_prepare_guest_image=${PREPARE_GUEST_IMAGE:-true}
 effective_guest_prep_mode=${GUEST_PREP_MODE:-full}
+if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then
+  [[ "$effective_prepare_guest_image" == "true" ]] || die "IMAGE_EXPECTED_VERSION_ID requires PREPARE_GUEST_IMAGE=true"
+  [[ "$effective_guest_prep_mode" == "full" ]] || die "IMAGE_EXPECTED_VERSION_ID requires GUEST_PREP_MODE=full"
+fi
 if [[ "$IMAGE_EXPECTS_QEMU_AGENT" == "true" ]]; then
   [[ "$ENABLE_QEMU_AGENT" == "true" ]] || die "IMAGE_EXPECTS_QEMU_AGENT=true requires ENABLE_QEMU_AGENT=true"
   [[ "$effective_prepare_guest_image" == "true" ]] || die "IMAGE_EXPECTS_QEMU_AGENT=true requires PREPARE_GUEST_IMAGE=true"
@@ -158,6 +192,8 @@ printf '\n'
 printf 'Image:\n'
 printf '  Profile: %s\n' "$IMAGE_PROFILE"
 printf '  OS family: %s\n' "$IMAGE_OS_FAMILY"
+printf '  Expected VERSION_ID: %s\n' "${IMAGE_EXPECTED_VERSION_ID:-not pinned}"
+printf '  DNF releasever: %s\n' "${IMAGE_DNF_RELEASEVER:-not pinned}"
 printf '  Expects QEMU guest agent: %s\n' "$IMAGE_EXPECTS_QEMU_AGENT"
 printf '  Filesystem layout: %s\n' "$IMAGE_FILESYSTEM_LAYOUT"
 printf '  URL: %s\n' "$IMAGE_URL"

@@ -4,9 +4,9 @@ This handoff is for the OpenTofu coding agent working in `platform-infra` after 
 
 This repository stops at reusable Proxmox templates. Do not add OpenTofu resources, workload VM definitions, production IP addresses, Ansible inventory, application configuration, or secrets here.
 
-## Validated Template
+## Template Contract
 
-Rocky 10.1 is currently validated as a Proxmox cloud-init template:
+Rocky 10.1 is the required Proxmox cloud-init template contract:
 
 ```text
 Template name: rocky-10.1-cloud-base
@@ -20,9 +20,11 @@ Disk bus: scsi
 SCSI controller: virtio-scsi-pci
 Console: vga std plus serial0 socket
 QEMU guest agent: enabled
+Expected guest VERSION_ID: 10.1
+Persistent DNF releasever: 10.1
 ```
 
-The latest real smoke test confirmed:
+The latest real smoke test confirmed the base template mechanics:
 
 - clone from template succeeds
 - static cloud-init networking is applied
@@ -33,7 +35,16 @@ The latest real smoke test confirmed:
 - Proxmox graceful shutdown succeeds
 - temporary smoke-test VM cleanup succeeds
 
-Before coding against the template in `platform-infra`, verify the current template name and VMID in the private template-builder config or with `qm config <template-vmid>` on Proxmox. Treat the values above as the validated handoff state, not as a reason to hard-code VMIDs in reusable modules.
+Exact-version profiles add a stricter current handoff gate: the profile's
+`IMAGE_EXPECTED_VERSION_ID` must pass during image preparation and in a fresh
+smoke-test clone, and any persistent package-manager release pin must match it.
+Do not infer the running clone version from the template name alone.
+
+The exact-version changes are not a validated handoff until template VMID 9003
+is rebuilt and a fresh smoke-test clone confirms `VERSION_ID=10.1` after
+cloud-init completes.
+
+Before coding against the template in `platform-infra`, verify the current template name and VMID in the private template-builder config or with `qm config <template-vmid>` on Proxmox. Re-run the current smoke test after rebuilding an exact-version profile. Treat the values above as the required handoff contract, not as a reason to hard-code VMIDs in reusable modules.
 
 ## OpenTofu Responsibilities
 

@@ -102,6 +102,24 @@ make check-tools TEMPLATE=rocky-9
 
 Fix: Restore network access, update `IMAGE_URL`, or pre-cache a checksum-valid image under `.cache/images/` on the remote build directory. Remove a cached image when the preflight reports that its checksum is invalid.
 
+## Prepared Guest Version Does Not Match
+
+Symptom: Full preparation reports that the source or final guest `VERSION_ID`
+does not match `IMAGE_EXPECTED_VERSION_ID`, or a smoke-test clone reports a newer
+minor release.
+
+Likely cause: The source image does not match the profile, a normal repository
+was used instead of the exact pinned repositories, or the old Vault repositories
+are unavailable.
+
+Fix: Verify the source checksum and all exact-version profile fields. For Rocky
+10.1, require direct 10.1 Vault BaseOS and AppStream URLs and
+`IMAGE_DNF_RELEASEVER="10.1"`. Do not fall forward to current Rocky repositories.
+Inspect `/etc/os-release` and `/etc/dnf/vars/releasever` in the prepared image or
+kept smoke-test clone. Remember that Rocky Vault content is historical and
+unsupported; deliberately advance the profile when the platform is ready for a
+new minor release.
+
 ## Disk Import Succeeds But Attach Fails
 
 Symptom: `qm importdisk` succeeds, but the script cannot find an imported unused disk.

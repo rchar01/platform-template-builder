@@ -130,9 +130,12 @@ guest_console_command() {
 }
 
 prepare_guest_image() {
+  local -a finalization_commands
   local packages
   local console_command
+  local package_install_command
   local ssh_service
+  local version_assertion
 
   PREPARED_IMAGE_PATH="${IMAGE_CACHE_DIR}/${TEMPLATE_NAME}-prepared.qcow2"
 
@@ -150,8 +153,22 @@ prepare_guest_image() {
   packages=$(guest_prep_packages)
   ssh_service=$(guest_ssh_service)
 
+  if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then
+    version_assertion=$(ptb_guest_version_assertion "$IMAGE_EXPECTED_VERSION_ID")
+    info "Verifying source guest VERSION_ID=${IMAGE_EXPECTED_VERSION_ID}"
+    timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
+      --run-command "$version_assertion" || die "Source guest VERSION_ID does not match ${IMAGE_EXPECTED_VERSION_ID}"
+  fi
+
   info "Installing guest packages: ${packages}"
-  timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" --install "$packages" || die "virt-customize failed while installing guest packages in ${PREPARED_IMAGE_PATH}"
+  if [[ -n "${IMAGE_DNF_RELEASEVER:-}" ]]; then
+    package_install_command=$(ptb_rhel_package_install_command "$packages")
+    timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
+      --run-command "$package_install_command" || die "virt-customize failed while installing guest packages from pinned repositories in ${PREPARED_IMAGE_PATH}"
+  else
+    timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
+      --install "$packages" || die "virt-customize failed while installing guest packages in ${PREPARED_IMAGE_PATH}"
+  fi
 
   info "Configuring cloud-init, guest services, and serial console"
   timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
@@ -173,12 +190,18 @@ prepare_guest_image() {
     --operations ssh-hostkeys,logfiles,tmp-files,bash-history || die "virt-sysprep failed while cleaning ${PREPARED_IMAGE_PATH}"
 
   info "Finalizing guest identity and boot sanity checks"
+  finalization_commands=(
+    --run-command "test -e /etc/os-release"
+    --run-command "test -x /sbin/init"
+    --run-command ": > /etc/machine-id"
+    --run-command "if [ -d /var/lib/dbus ]; then rm -f /var/lib/dbus/machine-id && ln -s /etc/machine-id /var/lib/dbus/machine-id; fi"
+    --run-command "rm -rf /var/lib/cloud/*"
+  )
+  if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then
+    finalization_commands+=(--run-command "$version_assertion")
+  fi
   timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
-    --run-command "test -e /etc/os-release" \
-    --run-command "test -x /sbin/init" \
-    --run-command ": > /etc/machine-id" \
-    --run-command "if [ -d /var/lib/dbus ]; then rm -f /var/lib/dbus/machine-id && ln -s /etc/machine-id /var/lib/dbus/machine-id; fi" \
-    --run-command "rm -rf /var/lib/cloud/*" || die "virt-customize failed while finalizing guest identity in ${PREPARED_IMAGE_PATH}"
+    "${finalization_commands[@]}" || die "virt-customize failed while finalizing guest identity or validating VERSION_ID in ${PREPARED_IMAGE_PATH}"
 
   if [[ "$IMAGE_OS_FAMILY" == "rhel" ]]; then
     info "Relabeling SELinux contexts"
@@ -258,13 +281,13 @@ fi
 
 download_image
 
-if [[ "$REPLACE_EXISTING_VM" == "true" ]]; then
-  destroy_existing_vm
-fi
-
 if [[ "$PREPARE_GUEST_IMAGE" == "true" ]]; then
   prepare_guest_image
   IMPORT_IMAGE_PATH=$PREPARED_IMAGE_PATH
+fi
+
+if [[ "$REPLACE_EXISTING_VM" == "true" ]]; then
+  destroy_existing_vm
 fi
 
 info "Creating VM shell ${TEMPLATE_VMID} (${TEMPLATE_NAME})"
@@ -292,6 +315,7 @@ if [[ -n "${CPU_TYPE:-}" ]]; then
 fi
 apply_console_defaults
 qm set "$TEMPLATE_VMID" --citype nocloud
+qm set "$TEMPLATE_VMID" --ciupgrade 0
 qm set "$TEMPLATE_VMID" --ciuser "$CLOUDINIT_USER"
 
 if [[ "$ENABLE_QEMU_AGENT" == "true" ]]; then

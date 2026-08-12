@@ -10,7 +10,7 @@ SMOKE_TEST_VMID ?= 9900
 
 export SSH_EMPTY_PASSPHRASE SSH_WRITE_CONFIG SSH_TEST SSH_PRINT_PUBLIC_KEY
 
-.PHONY: help verify syntax shellcheck init-ssh check-images check-tools \
+.PHONY: help verify syntax test shellcheck init-ssh check-images check-tools \
 	validate build smoke-test cleanup-smoke-test cleanup \
 	check-config check-ssh-config
 
@@ -36,10 +36,14 @@ syntax:
 ## Run ShellCheck on scripts
 shellcheck:
 	@command -v shellcheck >/dev/null 2>&1 || { printf '%s\n' 'shellcheck not found; install ShellCheck or skip this target' >&2; exit 1; }
-	shellcheck scripts/*.sh
+	shellcheck scripts/*.sh tests/test-*.sh
+
+## Run local tests
+test:
+	@for test_script in tests/test-*.sh; do bash "$$test_script"; done
 
 ## Run local verification checks
-verify: syntax
+verify: syntax test
 
 ## Initialize local SSH key/config for Proxmox template builds
 init-ssh: check-ssh-config
