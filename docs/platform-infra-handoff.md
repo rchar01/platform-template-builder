@@ -41,9 +41,10 @@ Exact-version profiles add a stricter current handoff gate: the profile's
 smoke-test clone, and any persistent package-manager release pin must match it.
 Do not infer the running clone version from the template name alone.
 
-The exact-version changes are not a validated handoff until template VMID 9003
-is rebuilt and a fresh smoke-test clone confirms `VERSION_ID=10.1` after
-cloud-init completes.
+Template VMID 9003 was rebuilt on 2026-08-12. A fresh smoke-test clone confirmed
+`VERSION_ID=10.1` and persistent DNF `releasever=10.1` after cloud-init,
+responsive SSH and QEMU guest agent services, the configured address, graceful
+shutdown, and successful temporary-VM cleanup.
 
 Before coding against the template in `platform-infra`, verify the current template name and VMID in the private template-builder config or with `qm config <template-vmid>` on Proxmox. Re-run the current smoke test after rebuilding an exact-version profile. Treat the values above as the required handoff contract, not as a reason to hard-code VMIDs in reusable modules.
 
