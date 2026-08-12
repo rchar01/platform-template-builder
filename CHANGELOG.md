@@ -23,6 +23,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   after preparation and in smoke-test clones.
 - Templates and smoke-test clones now disable Proxmox cloud-init package
   upgrades so first boot retains the prepared guest release.
+- Final image preparation and clone smoke tests now verify that a profile-pinned
+  DNF release variable remains present and exact.
 - Forced recreation now prepares and validates the replacement image before
   destroying an existing template.
 

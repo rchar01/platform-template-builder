@@ -347,6 +347,13 @@ if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then
   ok "Guest VERSION_ID matches ${IMAGE_EXPECTED_VERSION_ID} after cloud-init"
 fi
 
+if [[ -n "${IMAGE_DNF_RELEASEVER:-}" ]]; then
+  releasever_assertion=$(ptb_guest_dnf_releasever_assertion "$IMAGE_DNF_RELEASEVER")
+  guest_ssh "$releasever_assertion" ||
+    fail_keep_vm "Guest DNF releasever does not match ${IMAGE_DNF_RELEASEVER} after cloud-init; kept VM for inspection"
+  ok "Guest DNF releasever matches ${IMAGE_DNF_RELEASEVER} after cloud-init"
+fi
+
 run_remote_smoke_action qga-check || fail_keep_vm "QEMU guest-agent checks failed; kept VM for console/noVNC debugging"
 guest_ssh "systemctl is-active qemu-guest-agent" >/dev/null
 ok "QEMU guest agent service is healthy"

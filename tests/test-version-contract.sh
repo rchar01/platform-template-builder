@@ -20,6 +20,24 @@ expected_assertion=". /etc/os-release && test \"\${VERSION_ID:-}\" = '10.1'"
 [[ "$(ptb_guest_version_assertion '10.1')" == "$expected_assertion" ]] ||
   fail "unexpected guest version assertion"
 
+expected_releasever_assertion="test \"\$(cat /etc/dnf/vars/releasever)\" = '10.1'"
+releasever_assertion=$(ptb_guest_dnf_releasever_assertion '10.1')
+[[ "$releasever_assertion" == "$expected_releasever_assertion" ]] ||
+  fail "unexpected guest DNF releasever assertion"
+
+releasever_path="$TMP_DIR/releasever"
+releasever_test_assertion=${releasever_assertion//\/etc\/dnf\/vars\/releasever/$releasever_path}
+printf '10.1\n' >"$releasever_path"
+bash -c "$releasever_test_assertion" || fail "matching DNF releasever was rejected"
+printf '10.2\n' >"$releasever_path"
+if bash -c "$releasever_test_assertion"; then
+  fail "mismatched DNF releasever was accepted"
+fi
+rm -f "$releasever_path"
+if bash -c "$releasever_test_assertion" >/dev/null 2>&1; then
+  fail "missing DNF releasever was accepted"
+fi
+
 IMAGE_DNF_RELEASEVER=10.1
 IMAGE_DNF_BASEOS_URL=https://dl.rockylinux.org/vault/rocky/10.1/BaseOS/x86_64/os/
 IMAGE_DNF_APPSTREAM_URL=https://dl.rockylinux.org/vault/rocky/10.1/AppStream/x86_64/os/
@@ -89,5 +107,9 @@ cloud_init_gate='guest_cloud_init_wait "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS"'
 version_gate='if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then'
 [[ "$smoke_test" == *"$cloud_init_gate"*"$version_gate"* ]] ||
   fail "guest version gate must run after cloud-init completion"
+# shellcheck disable=SC2016
+releasever_gate='if [[ -n "${IMAGE_DNF_RELEASEVER:-}" ]]; then'
+[[ "$smoke_test" == *"$cloud_init_gate"*"$releasever_gate"* ]] ||
+  fail "guest DNF releasever gate must run after cloud-init completion"
 
 printf '[OK] Exact version command contract\n'

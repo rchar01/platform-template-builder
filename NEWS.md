@@ -10,6 +10,8 @@ This file gives a short, release-oriented view of what changed between versions.
   version during smoke tests.
 - Templates and smoke-test clones now disable Proxmox cloud-init package
   upgrades so first boot does not advance the reviewed guest release.
+- Exact-version image finalization and smoke tests now verify the persistent DNF
+  release pin as well as the guest version.
 - Forced replacement now waits until image preparation and exact-version checks
   succeed before destroying an existing template.
 

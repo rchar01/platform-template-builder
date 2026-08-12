@@ -74,6 +74,15 @@ ptb_guest_version_assertion() {
   printf '. /etc/os-release && test "${VERSION_ID:-}" = %s' "$expected_version"
 }
 
+ptb_guest_dnf_releasever_assertion() {
+  local expected_releasever
+
+  expected_releasever=$(ptb_shell_quote "$1")
+  # Command substitution must run inside the guest shell.
+  # shellcheck disable=SC2016
+  printf 'test "$(cat /etc/dnf/vars/releasever)" = %s' "$expected_releasever"
+}
+
 ptb_rhel_package_install_command() {
   local packages=$1
   local releasever

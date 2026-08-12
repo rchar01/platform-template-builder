@@ -134,6 +134,7 @@ prepare_guest_image() {
   local packages
   local console_command
   local package_install_command
+  local releasever_assertion
   local ssh_service
   local version_assertion
 
@@ -200,8 +201,12 @@ prepare_guest_image() {
   if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then
     finalization_commands+=(--run-command "$version_assertion")
   fi
+  if [[ -n "${IMAGE_DNF_RELEASEVER:-}" ]]; then
+    releasever_assertion=$(ptb_guest_dnf_releasever_assertion "$IMAGE_DNF_RELEASEVER")
+    finalization_commands+=(--run-command "$releasever_assertion")
+  fi
   timeout --kill-after=10s "$GUEST_PREP_TIMEOUT_SECONDS" virt-customize -a "$PREPARED_IMAGE_PATH" \
-    "${finalization_commands[@]}" || die "virt-customize failed while finalizing guest identity or validating VERSION_ID in ${PREPARED_IMAGE_PATH}"
+    "${finalization_commands[@]}" || die "virt-customize failed while finalizing guest identity or validating the exact-version contract in ${PREPARED_IMAGE_PATH}"
 
   if [[ "$IMAGE_OS_FAMILY" == "rhel" ]]; then
     info "Relabeling SELinux contexts"
