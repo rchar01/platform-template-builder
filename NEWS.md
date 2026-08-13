@@ -12,6 +12,8 @@ This file gives a short, release-oriented view of what changed between versions.
 - Smoke tests now reuse the configured Proxmox transport key by default when no
   separate guest-test key is supplied. Only the public key is injected into the
   temporary clone; templates do not retain it.
+- Rocky 10.0 and Rocky 10.2 have passed complete fresh-clone smoke tests,
+  including their exact guest versions and persistent DNF release pins.
 - Rocky 10.1 template preparation now verifies the exact guest version, uses
   direct 10.1 Vault repositories and the profile-selected guest signing key for
   package installation, persists the DNF release pin in clones, and rechecks the

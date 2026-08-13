@@ -10,9 +10,9 @@ Available Rocky 10 exact-minor build profiles:
 
 | Template | Example VMID | Runtime status |
 |---|---:|---|
-| `rocky-10.0-cloud-base` | 9004 | Migration-test profile; real Proxmox smoke test pending. |
+| `rocky-10.0-cloud-base` | 9004 | Validated migration-test contract. |
 | `rocky-10.1-cloud-base` | 9003 | Validated handoff contract. |
-| `rocky-10.2-cloud-base` | 9005 | Available profile; real Proxmox smoke test pending. |
+| `rocky-10.2-cloud-base` | 9005 | Validated handoff contract. |
 
 Rocky 10.1 remains the required validated Proxmox cloud-init template contract:
 
@@ -33,7 +33,7 @@ Expected guest VERSION_ID: 10.1
 Persistent DNF releasever: 10.1
 ```
 
-The latest real smoke test confirmed the base template mechanics:
+The recorded Rocky 10.1 smoke test confirmed the base template mechanics:
 
 - clone from template succeeds
 - static cloud-init networking is applied
@@ -54,11 +54,19 @@ Template VMID 9003 was rebuilt on 2026-08-12. A fresh smoke-test clone confirmed
 responsive SSH and QEMU guest agent services, the configured address, graceful
 shutdown, and successful temporary-VM cleanup.
 
-Before coding against a template in `platform-infra`, verify the current template name and VMID in the private template-builder config or with `qm config <template-vmid>` on Proxmox. Re-run the current smoke test after rebuilding an exact-version profile. Do not treat Rocky 10.0 or 10.2 as validated handoff contracts until their own fresh clones pass the complete smoke test. Treat example VMIDs as local conventions, not as values to hard-code in reusable modules.
+Before coding against a template in `platform-infra`, verify the current template name and VMID in the private template-builder config or with `qm config <template-vmid>` on Proxmox. Re-run the current smoke test after rebuilding an exact-version profile. Treat example VMIDs as local conventions, not as values to hard-code in reusable modules.
 
 Rocky 10.0 is retained to test controlled migration and upgrade paths from an
 archived baseline. Do not select it as the default for new or long-lived
 workloads; use its clones only in an explicitly scoped migration test.
+
+Template VMIDs 9004 and 9005 were built and smoke-tested on 2026-08-13. Fresh
+clones from Rocky 10.0 and Rocky 10.2 both confirmed their expected
+`VERSION_ID`, persistent matching DNF `releasever`, cloud-init completion,
+Python 3, SSH through an injected public key, QEMU guest-agent service and IP
+reporting, graceful shutdown, and successful temporary-VM cleanup. The shared
+template-builder transport identity was used for these tests; only its public
+key was injected into each temporary clone.
 
 ## OpenTofu Responsibilities
 

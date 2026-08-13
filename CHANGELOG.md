@@ -23,10 +23,13 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Smoke tests now default to the private SSH transport config's key when no
   separate guest-test key is supplied; only its public key is injected into the
   temporary clone.
-- Documentation now distinguishes available Rocky 10 build profiles from the
-  currently validated Rocky 10.1 downstream handoff contract.
+- Documentation distinguishes the required Rocky 10.1 downstream baseline from
+  the full set of runtime-validated Rocky 10 profiles.
 - Rocky 10.0 is documented as an archived migration-test source rather than a
   supported baseline for new or long-lived deployments.
+- Rocky 10.0 and Rocky 10.2 are documented as validated after successful fresh
+  clone smoke tests of their exact-version, cloud-init, SSH, guest-agent,
+  shutdown, and cleanup contracts.
 - Rocky 10.1 full preparation now installs packages only from direct 10.1 Vault
   BaseOS and AppStream repositories with package signature verification,
   persists `releasever=10.1`, and asserts the exact guest version before and
