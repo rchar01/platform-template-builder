@@ -109,12 +109,13 @@ does not match `IMAGE_EXPECTED_VERSION_ID`, or a smoke-test clone reports a newe
 minor release.
 
 Likely cause: The source image does not match the profile, a normal repository
-was used instead of the exact pinned repositories, or the old Vault repositories
-are unavailable.
+was used instead of the exact pinned repositories, or the selected exact-minor
+repositories are unavailable.
 
-Fix: Verify the source checksum and all exact-version profile fields. For Rocky
-10.1, require direct 10.1 Vault BaseOS and AppStream URLs and
-`IMAGE_DNF_RELEASEVER="10.1"`. Do not fall forward to current Rocky repositories.
+Fix: Verify the source checksum and all exact-version profile fields. Require
+BaseOS and AppStream URLs for the selected minor and make
+`IMAGE_DNF_RELEASEVER` match `IMAGE_EXPECTED_VERSION_ID`. Do not fall forward to
+repositories for a newer Rocky minor.
 Inspect `/etc/os-release` and `/etc/dnf/vars/releasever` in the prepared image or
 kept smoke-test clone. Remember that Rocky Vault content is historical and
 unsupported; deliberately advance the profile when the platform is ready for a
@@ -226,11 +227,11 @@ Likely cause: The VM is using Proxmox's default generic CPU model, which may not
 Check:
 
 ```bash
-ssh pve-template-builder 'qm config 9003 | grep -E "^(cpu|machine|bios):"'
+ssh pve-template-builder 'qm config <template-vmid> | grep -E "^(cpu|machine|bios):"'
 ssh pve-template-builder 'qm config 9900 | grep -E "^(cpu|machine|bios):"'
 ```
 
-Fix: Set `CPU_TYPE="host"` in the Rocky 10.1 template config, rebuild the template, and rerun the smoke test.
+Fix: Set `CPU_TYPE="host"` in the Rocky 10 template config, rebuild the template, and rerun the smoke test.
 
 ## Smoke Test Times Out During Cloud-Init Status
 

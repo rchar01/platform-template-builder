@@ -9,6 +9,9 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added exact-minor Rocky 10.0 and Rocky 10.2 template examples and image
+  profiles alongside Rocky 10.1, with versioned upstream images, matching DNF
+  release pins, and x86-64-v3-capable host CPU defaults.
 - Added optional exact guest `VERSION_ID` metadata and an atomic pinned
   RHEL-family DNF repository, release, and guest-local signing-key set to
   committed image profiles.
@@ -17,6 +20,13 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Smoke tests now default to the private SSH transport config's key when no
+  separate guest-test key is supplied; only its public key is injected into the
+  temporary clone.
+- Documentation now distinguishes available Rocky 10 build profiles from the
+  currently validated Rocky 10.1 downstream handoff contract.
+- Rocky 10.0 is documented as an archived migration-test source rather than a
+  supported baseline for new or long-lived deployments.
 - Rocky 10.1 full preparation now installs packages only from direct 10.1 Vault
   BaseOS and AppStream repositories with package signature verification,
   persists `releasever=10.1`, and asserts the exact guest version before and

@@ -2,6 +2,9 @@
 
 Template configs are private `.env` files copied from committed examples under `configs/`. They describe one reusable Proxmox template build.
 
+The Rocky exact-minor examples use the same workflow. Substitute
+`rocky-10.0`, `rocky-10.1`, or `rocky-10.2` for `TEMPLATE` as needed.
+
 For a normal first build, copy an example and edit only the Proxmox-specific values:
 
 ```bash
@@ -31,8 +34,7 @@ make build TEMPLATE=rocky-10.1
 make smoke-test TEMPLATE=rocky-10.1 \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
-  SMOKE_TEST_DNS=<dns-ip> \
-  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
+  SMOKE_TEST_DNS=<dns-ip>
 ```
 
 ## Running With Separate Private Config Repo
@@ -62,8 +64,7 @@ make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
 make smoke-test TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
-  SMOKE_TEST_DNS=<dns-ip> \
-  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
+  SMOKE_TEST_DNS=<dns-ip>
 ```
 
 The committed image profiles remain in this repository under `configs/images/`. Private template configs should continue to reference them, for example:
@@ -145,11 +146,15 @@ Image profiles are committed files under `configs/images/`. Template configs ref
 
 Do not copy image metadata into private template configs unless you are intentionally adding or changing an image profile. Validation rejects template configs that set profile-owned image metadata, including `CLOUDINIT_USER`. The builder preserves the upstream guest filesystem layout; workload-specific Proxmox disk sizing and controller tuning belong downstream in provisioning.
 
-Exact-minor DNF pins intentionally persist in clones. They prevent an old minor
-profile from silently consuming packages from a newer minor, but old Rocky Vault
-content is unsupported and does not receive current security fixes. Advance the
-profile and rebuild the template deliberately when the managed platform moves to
-a new Rocky minor release.
+Exact-minor DNF pins intentionally persist in clones and prevent a profile from
+silently consuming packages from a newer minor. Rocky 10.0 and 10.1 Vault
+content is unsupported and does not receive current security fixes. Rocky 10.2
+uses active exact-minor repositories and receives 10.2 errata until those paths
+are retired. Advance or archive profiles deliberately when the managed platform
+moves to a new Rocky minor release.
+
+Use Rocky 10.0 only when a migration test needs a reproducible archived source
+minor. It is not a supported baseline for new or long-lived deployments.
 
 ## Validate And Build
 
@@ -166,15 +171,20 @@ make smoke-test TEMPLATE=rocky-10.1 \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
   SMOKE_TEST_DNS=<dns-ip> \
-  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key> \
   SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900
 ```
 
 `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly makes the temporary network settings easier to review.
 
+With an existing `SSH_CONFIG`, smoke tests reuse its `SSH_KEY_PATH` by default.
+Only the derived public key is injected into the temporary clone. Set
+`SMOKE_TEST_SSH_KEY` explicitly when guest-test access should use a separate key.
+If `SMOKE_TEST_SSH_PUBLIC_KEY` is supplied, it must match the selected private
+key.
+
 Verify the resulting template on Proxmox:
 
 ```bash
 ssh pve-template-builder 'qm list'
-ssh pve-template-builder 'qm config 9003'
+ssh pve-template-builder 'qm config <template-vmid>'
 ```

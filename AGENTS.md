@@ -56,7 +56,7 @@ Keep responsibility boundaries strict. When a requested change starts to involve
 - Check all committed image URLs without downloading image bodies: `make check-images`.
 - Validate a private config: `make validate TEMPLATE=rocky-9`.
 - Build remotely through SSH/rsync: `make build TEMPLATE=rocky-9`.
-- Smoke-test a built template with private temporary IP/key values: `make smoke-test TEMPLATE=rocky-9 SMOKE_TEST_IPV4=... SMOKE_TEST_GATEWAY=... SMOKE_TEST_DNS=... SMOKE_TEST_SSH_KEY=...`.
+- Smoke-test a built template with private temporary network values: `make smoke-test TEMPLATE=rocky-9 SMOKE_TEST_IPV4=... SMOKE_TEST_GATEWAY=... SMOKE_TEST_DNS=...`. With `SSH_CONFIG`, the smoke test reuses its key unless `SMOKE_TEST_SSH_KEY` overrides it.
 - Cleanup only the configured smoke-test VMID: `make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900`.
 - Cleanup only the configured VMID: `make cleanup TEMPLATE=rocky-9`.
 - Local syntax and contract verification: `make verify`.

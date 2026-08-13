@@ -21,7 +21,7 @@ Use this page as a navigation index for the repository docs.
 - First-time setup: start with `../README.md`, then use `proxmox-requirements.md`.
 - Fill in a private template config: use `template-config-reference.md`.
 - Use private configs from `platform-private`: use `template-config-reference.md`.
-- Add or update a template: use `template-conventions.md`, then update the matching files under `../configs/`.
+- Add or update a template: use `template-conventions.md`, add the matching example and image profile under `../configs/`, and register its selector and VMID in the project documentation.
 - Hand off a smoke-tested template to OpenTofu: use `platform-infra-handoff.md`.
 - Smoke-test or debug a failed build/clone: use `troubleshooting.md`.
 - Understand repository boundaries: read `../README.md` and `../AGENTS.md`.

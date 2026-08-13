@@ -6,7 +6,15 @@ This repository stops at reusable Proxmox templates. Do not add OpenTofu resourc
 
 ## Template Contract
 
-Rocky 10.1 is the required Proxmox cloud-init template contract:
+Available Rocky 10 exact-minor build profiles:
+
+| Template | Example VMID | Runtime status |
+|---|---:|---|
+| `rocky-10.0-cloud-base` | 9004 | Migration-test profile; real Proxmox smoke test pending. |
+| `rocky-10.1-cloud-base` | 9003 | Validated handoff contract. |
+| `rocky-10.2-cloud-base` | 9005 | Available profile; real Proxmox smoke test pending. |
+
+Rocky 10.1 remains the required validated Proxmox cloud-init template contract:
 
 ```text
 Template name: rocky-10.1-cloud-base
@@ -46,7 +54,11 @@ Template VMID 9003 was rebuilt on 2026-08-12. A fresh smoke-test clone confirmed
 responsive SSH and QEMU guest agent services, the configured address, graceful
 shutdown, and successful temporary-VM cleanup.
 
-Before coding against the template in `platform-infra`, verify the current template name and VMID in the private template-builder config or with `qm config <template-vmid>` on Proxmox. Re-run the current smoke test after rebuilding an exact-version profile. Treat the values above as the required handoff contract, not as a reason to hard-code VMIDs in reusable modules.
+Before coding against a template in `platform-infra`, verify the current template name and VMID in the private template-builder config or with `qm config <template-vmid>` on Proxmox. Re-run the current smoke test after rebuilding an exact-version profile. Do not treat Rocky 10.0 or 10.2 as validated handoff contracts until their own fresh clones pass the complete smoke test. Treat example VMIDs as local conventions, not as values to hard-code in reusable modules.
+
+Rocky 10.0 is retained to test controlled migration and upgrade paths from an
+archived baseline. Do not select it as the default for new or long-lived
+workloads; use its clones only in an explicitly scoped migration test.
 
 ## OpenTofu Responsibilities
 
@@ -69,7 +81,7 @@ Keep application setup, package installation, service configuration, Kubernetes 
 
 ## Rocky/RHEL 10 Requirements
 
-Rocky 10.1 needs a CPU model with sufficiently new x86-64 features. The template is built with `CPU_TYPE="host"`.
+Rocky Linux 10 requires x86-64-v3 CPU features. All Rocky 10 template examples use `CPU_TYPE="host"`.
 
 When cloning the template, do not override the CPU model back to Proxmox's generic default. Either inherit the template CPU configuration or explicitly set a compatible CPU model, normally `host` for Rocky/RHEL 10 templates.
 

@@ -186,7 +186,9 @@ sync_remote_smoke_runner() {
   rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${SCRIPT_DIR}/proxmox-smoke-test-runner.sh" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/proxmox-smoke-test-runner.sh"
   rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "${SCRIPT_DIR}/proxmox-vm-destroy.sh" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/scripts/proxmox-vm-destroy.sh"
   rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "$LOCAL_PAYLOAD_TEMP" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/${REMOTE_PAYLOAD_FILE_REL}"
-  rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "$SMOKE_TEST_PUBLIC_KEY_PATH" "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/${REMOTE_PUBLIC_KEY_FILE_REL}"
+  ssh_transport_sync_public_key \
+    "$SMOKE_TEST_PUBLIC_KEY_PATH" \
+    "${SSH_TRANSPORT_TARGET}:${PROXMOX_REMOTE_DIR}/${REMOTE_PUBLIC_KEY_FILE_REL}"
   # shellcheck disable=SC2029
   ssh_transport_ssh "test -x ${ESC_PROXMOX_REMOTE_DIR}/scripts/proxmox-smoke-test-runner.sh" || die "Remote smoke-test runner is not executable on ${SSH_TRANSPORT_DISPLAY}"
   REMOTE_SMOKE_READY=true
@@ -247,6 +249,7 @@ ptb_command_exists timeout || die "timeout is required"
 
 ssh_transport_init "${TEMPLATE_BUILDER_SSH_CONFIG:-}" "$PROXMOX_HOST"
 
+SMOKE_TEST_SSH_KEY=$(ssh_transport_select_guest_key "${SMOKE_TEST_SSH_KEY:-}" "${SSH_KEY_PATH:-}")
 SMOKE_TEST_VMID=${SMOKE_TEST_VMID:-9900}
 SMOKE_TEST_NAME=${SMOKE_TEST_NAME:-platform-template-smoke-${SMOKE_TEST_VMID}}
 SMOKE_TEST_BRIDGE=${SMOKE_TEST_BRIDGE:-$BRIDGE}
@@ -308,6 +311,8 @@ fi
 if [[ -n "${SMOKE_TEST_SSH_PUBLIC_KEY:-}" ]]; then
   SMOKE_TEST_PUBLIC_KEY_PATH=$(ssh_transport_expand_path "$SMOKE_TEST_SSH_PUBLIC_KEY")
   [[ -f "$SMOKE_TEST_PUBLIC_KEY_PATH" ]] || die "Smoke-test SSH public key not found: ${SMOKE_TEST_PUBLIC_KEY_PATH}"
+  ssh_transport_public_key_matches_private "$SMOKE_TEST_SSH_KEY_PATH" "$SMOKE_TEST_PUBLIC_KEY_PATH" ||
+    die "SMOKE_TEST_SSH_PUBLIC_KEY does not match SMOKE_TEST_SSH_KEY"
 else
   LOCAL_PUBLIC_KEY_TEMP=$(mktemp "${TMPDIR:-/tmp}/template-smoke-key.XXXXXX.pub")
   ssh-keygen -y -f "$SMOKE_TEST_SSH_KEY_PATH" >"$LOCAL_PUBLIC_KEY_TEMP"

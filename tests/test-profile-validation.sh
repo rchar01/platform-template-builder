@@ -22,8 +22,71 @@ expect_failure() {
     fail "expected failure containing '$expected', got: $output"
 }
 
-"$ROOT_DIR/scripts/validate-config.sh" \
-  "$ROOT_DIR/configs/rocky-10.1-cloud-base.env.example" >/dev/null
+declare -A expected_vmids=(
+  [rocky-10.0]=9004
+  [rocky-10.1]=9003
+  [rocky-10.2]=9005
+)
+declare -A expected_image_urls=(
+  [rocky-10.0]="https://download.rockylinux.org/vault/rocky/10.0/images/x86_64/Rocky-10-GenericCloud-LVM-10.0-20250609.1.x86_64.qcow2"
+  [rocky-10.1]="https://download.rockylinux.org/vault/rocky/10.1/images/x86_64/Rocky-10-GenericCloud-LVM-10.1-20251116.0.x86_64.qcow2"
+  [rocky-10.2]="https://download.rockylinux.org/pub/rocky/10.2/images/x86_64/Rocky-10-GenericCloud-LVM-10.2-20260525.0.x86_64.qcow2"
+)
+declare -A expected_repo_roots=(
+  [rocky-10.0]="https://dl.rockylinux.org/vault/rocky/10.0"
+  [rocky-10.1]="https://dl.rockylinux.org/vault/rocky/10.1"
+  [rocky-10.2]="https://dl.rockylinux.org/pub/rocky/10.2"
+)
+
+for template in rocky-10.0 rocky-10.1 rocky-10.2; do
+  config_file="$ROOT_DIR/configs/${template}-cloud-base.env.example"
+  profile_file="$ROOT_DIR/configs/images/${template}.env"
+
+  "$ROOT_DIR/scripts/validate-config.sh" "$config_file" >/dev/null
+
+  (
+    set -a
+    # shellcheck source=/dev/null
+    . "$config_file"
+    # shellcheck source=/dev/null
+    . "$profile_file"
+    set +a
+
+    expected_version=${template#rocky-}
+    [[ "$TEMPLATE_NAME" == "${template}-cloud-base" ]] ||
+      fail "unexpected template name for ${template}: ${TEMPLATE_NAME}"
+    [[ "$TEMPLATE_VMID" == "${expected_vmids[$template]}" ]] ||
+      fail "unexpected VMID for ${template}: ${TEMPLATE_VMID}"
+    [[ "$IMAGE_PROFILE" == "configs/images/${template}.env" ]] ||
+      fail "unexpected image profile for ${template}: ${IMAGE_PROFILE}"
+    [[ "$IMAGE_EXPECTED_VERSION_ID" == "$expected_version" ]] ||
+      fail "unexpected VERSION_ID for ${template}: ${IMAGE_EXPECTED_VERSION_ID}"
+    [[ "$IMAGE_DNF_RELEASEVER" == "$expected_version" ]] ||
+      fail "unexpected DNF releasever for ${template}: ${IMAGE_DNF_RELEASEVER}"
+    [[ "$IMAGE_URL" == "${expected_image_urls[$template]}" ]] ||
+      fail "unexpected image URL for ${template}: ${IMAGE_URL}"
+    [[ "$IMAGE_DNF_BASEOS_URL" == "${expected_repo_roots[$template]}/BaseOS/x86_64/os/" ]] ||
+      fail "unexpected BaseOS URL for ${template}: ${IMAGE_DNF_BASEOS_URL}"
+    [[ "$IMAGE_DNF_APPSTREAM_URL" == "${expected_repo_roots[$template]}/AppStream/x86_64/os/" ]] ||
+      fail "unexpected AppStream URL for ${template}: ${IMAGE_DNF_APPSTREAM_URL}"
+    [[ "$IMAGE_DNF_GPGKEY" == file:///* ]] ||
+      fail "missing guest GPG key for ${template}"
+    [[ "$IMAGE_OS_FAMILY" == rhel ]] ||
+      fail "unexpected OS family for ${template}: ${IMAGE_OS_FAMILY}"
+    [[ "$IMAGE_EXPECTS_QEMU_AGENT" == true ]] ||
+      fail "QEMU guest agent must be expected for ${template}"
+    [[ "$IMAGE_FILESYSTEM_LAYOUT" == lvm-xfs ]] ||
+      fail "unexpected filesystem layout for ${template}: ${IMAGE_FILESYSTEM_LAYOUT}"
+    [[ "$CLOUDINIT_USER" == rocky ]] ||
+      fail "unexpected cloud-init user for ${template}: ${CLOUDINIT_USER}"
+    [[ "$CPU_TYPE" == host ]] ||
+      fail "host CPU type is required for ${template}"
+    [[ "$PREPARE_GUEST_IMAGE" == true && "$GUEST_PREP_MODE" == full ]] ||
+      fail "full guest preparation is required for ${template}"
+    [[ -n "${IMAGE_SHA256:-}" && -z "${IMAGE_SHA512:-}" ]] ||
+      fail "exactly one SHA-256 checksum is required for ${template}"
+  )
+done
 
 cp "$ROOT_DIR/configs/rocky-10.1-cloud-base.env.example" "$TMP_DIR/override.env"
 printf '%s\n' 'IMAGE_EXPECTED_VERSION_ID="10.2"' >>"$TMP_DIR/override.env"

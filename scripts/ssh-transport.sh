@@ -9,6 +9,38 @@ ssh_transport_expand_path() {
   esac
 }
 
+ssh_transport_select_guest_key() {
+  local requested_key=${1:-}
+  local transport_key=${2:-}
+
+  printf '%s\n' "${requested_key:-$transport_key}"
+}
+
+ssh_transport_public_key_matches_private() {
+  local derived_key
+  local derived_key_data
+  local derived_key_type
+  local private_key=$1
+  local public_key=$2
+  local public_key_data
+  local public_key_type
+
+  derived_key=$(ssh-keygen -y -f "$private_key") || return 1
+  read -r derived_key_type derived_key_data _ <<<"$derived_key"
+  read -r public_key_type public_key_data _ <"$public_key"
+
+  [[ -n "$derived_key_type" && -n "$derived_key_data" &&
+    "$derived_key_type" == "$public_key_type" &&
+    "$derived_key_data" == "$public_key_data" ]]
+}
+
+ssh_transport_sync_public_key() {
+  local public_key=$1
+  local destination=$2
+
+  rsync -az -e "$SSH_TRANSPORT_RSYNC_RSH" "$public_key" "$destination"
+}
+
 ssh_transport_die() {
   if declare -F die >/dev/null 2>&1; then
     die "$@"

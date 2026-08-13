@@ -6,11 +6,44 @@ TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/ptb-version-contract.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT
 # shellcheck source=scripts/common.sh
 . "$ROOT_DIR/scripts/common.sh"
+# shellcheck source=scripts/ssh-transport.sh
+. "$ROOT_DIR/scripts/ssh-transport.sh"
 
 fail() {
   printf '[FAIL] %s\n' "$*" >&2
   exit 1
 }
+
+[[ "$(ssh_transport_select_guest_key '' '/transport/key')" == /transport/key ]] ||
+  fail "empty smoke-test key did not fall back to the transport key"
+[[ "$(ssh_transport_select_guest_key '/guest/key' '/transport/key')" == /guest/key ]] ||
+  fail "explicit smoke-test key did not override the transport key"
+
+ssh-keygen -q -t ed25519 -N '' -f "$TMP_DIR/transport-key"
+ssh-keygen -q -t ed25519 -N '' -f "$TMP_DIR/other-key"
+ssh_transport_public_key_matches_private \
+  "$TMP_DIR/transport-key" "$TMP_DIR/transport-key.pub" ||
+  fail "matching SSH public and private keys were rejected"
+if ssh_transport_public_key_matches_private \
+  "$TMP_DIR/transport-key" "$TMP_DIR/other-key.pub"; then
+  fail "mismatched SSH public and private keys were accepted"
+fi
+
+rsync() {
+  printf '%s\n' "$@" >"$RSYNC_ARGV_FILE"
+}
+export -f rsync
+SSH_TRANSPORT_RSYNC_RSH='ssh -F /tmp/transport-config'
+RSYNC_ARGV_FILE="$TMP_DIR/rsync.argv"
+export RSYNC_ARGV_FILE SSH_TRANSPORT_RSYNC_RSH
+ssh_transport_sync_public_key \
+  "$TMP_DIR/transport-key.pub" 'builder:/tmp/authorized_key.pub'
+mapfile -t rsync_argv <"$RSYNC_ARGV_FILE"
+[[ "${rsync_argv[*]}" == \
+  "-az -e $SSH_TRANSPORT_RSYNC_RSH $TMP_DIR/transport-key.pub builder:/tmp/authorized_key.pub" ]] ||
+  fail "unexpected public-key sync arguments: ${rsync_argv[*]}"
+[[ "${rsync_argv[*]}" != *"$TMP_DIR/transport-key "* ]] ||
+  fail "private key path was passed to public-key synchronization"
 
 assert_contains() {
   [[ "$1" == *"$2"* ]] || fail "expected command to contain: $2"

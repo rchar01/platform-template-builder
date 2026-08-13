@@ -151,11 +151,10 @@ Run a smoke test before handing a rebuilt template to `platform-infra`:
 make smoke-test TEMPLATE=rocky-9 \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
-  SMOKE_TEST_DNS=<dns-ip> \
-  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
+  SMOKE_TEST_DNS=<dns-ip>
 ```
 
-The local smoke-test script also requires `ssh-keygen` and `timeout`; it checks for them when the workflow starts. Choose a temporary IP that is not used by workload VMs, DHCP leases, reservations, or other hosts. The default smoke-test VMID is `9900`, but the script refuses to continue if that VMID already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Failed clones are destroyed by default except remote preparation failures and QEMU guest-agent timeouts, which print diagnostics and keep the VM automatically for noVNC/console debugging. `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly is clearer. The default boot wait is `SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900`.
+The local smoke-test script also requires `ssh-keygen` and `timeout`; it checks for them when the workflow starts. With an existing `SSH_CONFIG`, `SMOKE_TEST_SSH_KEY` defaults to the transport config's `SSH_KEY_PATH`; only its derived public key is injected into the temporary clone. Set `SMOKE_TEST_SSH_KEY` explicitly to use a separate guest-test key. If `SMOKE_TEST_SSH_PUBLIC_KEY` is supplied, it must match the selected private key. Reusing the transport identity broadens where its public key is authorized; use a dedicated guest-test key when identity separation is required. Choose a temporary IP that is not used by workload VMs, DHCP leases, reservations, or other hosts. The default smoke-test VMID is `9900`, but the script refuses to continue if that VMID already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Failed clones are destroyed by default except remote preparation failures and QEMU guest-agent timeouts, which print diagnostics and keep the VM automatically for noVNC/console debugging. `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly is clearer. The default boot wait is `SMOKE_TEST_BOOT_TIMEOUT_SECONDS=900`.
 
 Clean a kept smoke-test VM without starting a new smoke test:
 

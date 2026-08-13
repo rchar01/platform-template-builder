@@ -11,6 +11,8 @@ Initial template IDs:
 9001 debian-12-cloud-base
 9002 ubuntu-24.04-cloud-base
 9003 rocky-10.1-cloud-base
+9004 rocky-10.0-cloud-base
+9005 rocky-10.2-cloud-base
 ```
 
 ## Template Rules
@@ -34,10 +36,10 @@ IMAGE_URL="https://example.invalid/cloud-image.qcow2"
 IMAGE_NAME="cloud-image.qcow2"
 IMAGE_SHA256="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 IMAGE_OS_FAMILY="rhel"
-IMAGE_EXPECTED_VERSION_ID="10.1"
-IMAGE_DNF_RELEASEVER="10.1"
-IMAGE_DNF_BASEOS_URL="https://example.invalid/vault/10.1/BaseOS/x86_64/os/"
-IMAGE_DNF_APPSTREAM_URL="https://example.invalid/vault/10.1/AppStream/x86_64/os/"
+IMAGE_EXPECTED_VERSION_ID="10.x"
+IMAGE_DNF_RELEASEVER="10.x"
+IMAGE_DNF_BASEOS_URL="https://example.invalid/rocky/10.x/BaseOS/x86_64/os/"
+IMAGE_DNF_APPSTREAM_URL="https://example.invalid/rocky/10.x/AppStream/x86_64/os/"
 IMAGE_DNF_GPGKEY="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-example"
 IMAGE_EXPECTS_QEMU_AGENT="true"
 IMAGE_FILESYSTEM_LAYOUT="unknown"
@@ -56,6 +58,10 @@ repositories for its package transaction, uses only the two direct HTTPS
 repositories with GPG checking, persists the release variable, and asserts the
 guest version before template replacement. Do not use this policy for a profile
 that should follow its distribution's current minor release.
+
+The Rocky 10.0 exact-minor profile is an intentional migration-test fixture. Its
+Vault repositories are historical and unsupported, so templates built from it
+should be used to exercise upgrade paths rather than as new deployment bases.
 
 Template configs reference profiles with `IMAGE_PROFILE`, for example:
 

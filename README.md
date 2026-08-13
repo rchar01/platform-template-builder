@@ -52,7 +52,9 @@ make help
 Supported `TEMPLATE` values:
 
 - `rocky-9`
+- `rocky-10.0`
 - `rocky-10.1`
+- `rocky-10.2`
 - `debian-12`
 - `ubuntu-24.04`
 
@@ -91,8 +93,7 @@ make build TEMPLATE=rocky-10.1
 make smoke-test TEMPLATE=rocky-10.1 \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
-  SMOKE_TEST_DNS=<dns-ip> \
-  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
+  SMOKE_TEST_DNS=<dns-ip>
 ```
 
 If password SSH login is not available, use the manual `/root/.ssh/authorized_keys` fallback in `SSH Bootstrap`.
@@ -136,8 +137,7 @@ make build TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder
 make smoke-test TEMPLATE=rocky-10.1 CONFIG_ROOT=../platform-private/template-builder \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
-  SMOKE_TEST_DNS=<dns-ip> \
-  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
+  SMOKE_TEST_DNS=<dns-ip>
 ```
 
 If you do not want to install `platform-tools`, run the helper from a sibling checkout:
@@ -248,19 +248,25 @@ Proxmox node:
 
 Guest image preparation defaults to `PREPARE_GUEST_IMAGE="true"` and `GUEST_PREP_MODE="full"`. Full mode copies the upstream image, installs/enables cloud-init, QEMU guest agent, SSH, NetworkManager, and serial console services, then removes stale cloud-init state, SSH host keys, network profiles, logs, and machine identity before import. Package installation customizes a shut-down image but still uses outbound libguestfs networking. Safe mode only copies the upstream image with `qemu-img` and does not mount or mutate the guest filesystem, so it is not the reusable-template path for image profiles that expect QEMU guest-agent support.
 
-The Rocky 10.1 profile is exact-minor pinned. Full preparation verifies
-`VERSION_ID=10.1`, installs packages only from its direct 10.1 Vault BaseOS and
-AppStream repositories, writes `/etc/dnf/vars/releasever` as `10.1`, and verifies
-the version again before replacing or importing a template. The profile also
-selects the guest-local Rocky signing key used to verify installed packages.
-Templates set Proxmox `ciupgrade=0`, so first boot does not silently advance to
-Rocky 10.2 before downstream configuration. Rocky Vault is
-historical and unsupported, so exact-minor pinning trades current security
-updates for repeatable 10.1 behavior until the profile is deliberately advanced.
+The Rocky 10.0, 10.1, and 10.2 profiles are exact-minor pinned. Full preparation
+verifies the profile's `VERSION_ID`, installs packages only from its matching
+BaseOS and AppStream repositories, persists the matching DNF `releasever`, and
+verifies both values before replacing or importing a template. The profiles use
+the guest-local Rocky 10 signing key to verify installed packages. Templates set
+Proxmox `ciupgrade=0`, so first boot does not silently advance the reviewed guest
+release before downstream configuration.
+
+Rocky 10.0 and 10.1 use historical Vault repositories, which are unsupported and
+do not receive current security fixes. Rocky 10.2 uses the active exact-minor
+repositories and receives 10.2 errata without advancing to a later minor. Move
+the 10.2 profile to Vault deliberately when Rocky retires its active 10.2 paths.
+The Rocky 10.0 profile is retained specifically for testing controlled migration
+and upgrade paths from the 10.0 baseline; it is not recommended for new or
+long-lived deployments.
 
 Template console mode defaults to `TEMPLATE_CONSOLE_MODE="vga-serial"`, which keeps a serial port attached but uses normal VGA/noVNC output for debugging. Set `TEMPLATE_CONSOLE_MODE="serial"` only after serial-only guest console behavior is proven for the image.
 
-Rocky/RHEL 10 images may require newer x86-64 CPU features than Proxmox's generic default CPU exposes. The Rocky 10.1 example sets `CPU_TYPE="host"`; use the same value in private Rocky 10.1 configs unless you have selected another compatible CPU model.
+Rocky/RHEL 10 requires x86-64-v3 CPU features that Proxmox's generic default CPU may not expose. All Rocky 10 examples set `CPU_TYPE="host"`; use that value in private Rocky 10 configs unless you have deliberately selected another x86-64-v3-capable CPU model.
 
 See `docs/proxmox-requirements.md` for detailed checks.
 
@@ -328,8 +334,7 @@ make build TEMPLATE=rocky-9
 make smoke-test TEMPLATE=rocky-9 \
   SMOKE_TEST_IPV4=<temporary-ip/cidr> \
   SMOKE_TEST_GATEWAY=<gateway-ip> \
-  SMOKE_TEST_DNS=<dns-ip> \
-  SMOKE_TEST_SSH_KEY=~/.ssh/<cloud-init-test-key>
+  SMOKE_TEST_DNS=<dns-ip>
 make cleanup-smoke-test TEMPLATE=rocky-9 SMOKE_TEST_VMID=9900
 make cleanup TEMPLATE=rocky-9
 ```
@@ -339,6 +344,14 @@ make cleanup TEMPLATE=rocky-9
 Builds download, verify, and prepare the selected image before replacing an existing `TEMPLATE_VMID`, so image, package, or exact-version failures cannot trigger `FORCE_RECREATE` destruction first. A valid cached image remains usable when the upstream image URL is temporarily unavailable, but full preparation still needs access to its selected package repositories.
 
 `make smoke-test` clones a temporary VM from the template, disables cloud-init package upgrades, injects cloud-init user/network/SSH data, waits for the QEMU guest agent, verifies the configured IP and SSH login, checks any profile-pinned exact guest version after cloud-init completes, checks guest services, tests graceful shutdown, and destroys the temporary VM by default. The default smoke-test VMID is `9900`; the script refuses to use it if it already exists unless `SMOKE_TEST_FORCE_RECREATE=true` is set. Remote preparation failures and QEMU guest-agent timeouts print Proxmox diagnostics and keep the failed VM automatically for noVNC/console debugging. `SMOKE_TEST_DNS` defaults to `SMOKE_TEST_GATEWAY` when omitted, but passing it explicitly is clearer.
+
+When `SSH_CONFIG` points to an existing template-builder transport config,
+`SMOKE_TEST_SSH_KEY` defaults to its `SSH_KEY_PATH`. The smoke test derives and
+injects that key's public half into only the temporary clone; the private key is
+not copied to Proxmox or baked into the source template. Set
+`SMOKE_TEST_SSH_KEY` explicitly to use a separate guest-test key. An optional
+`SMOKE_TEST_SSH_PUBLIC_KEY` must match the selected private key; otherwise, the
+smoke test fails before creating a clone.
 
 `make cleanup-smoke-test` destroys only `SMOKE_TEST_VMID`, force-stopping it first if needed so broken guests do not block cleanup on QEMU guest agent or ACPI shutdown. `make cleanup` destroys only `TEMPLATE_VMID` with the same destroy flow. Both require typing the target VMID unless `CLEANUP_ASSUME_YES=true` is set, and both use Proxmox purge cleanup plus unreferenced-disk cleanup when supported by the installed Proxmox version.
 
