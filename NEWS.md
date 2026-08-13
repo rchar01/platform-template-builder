@@ -4,6 +4,8 @@ This file gives a short, release-oriented view of what changed between versions.
 
 ## Unreleased
 
+## v1.5.0 - 2026-08-13
+
 - Rocky 10.0 and Rocky 10.2 exact-minor template profiles are now available
   alongside Rocky 10.1. Rocky 10.0 uses historical Vault content, while Rocky
   10.2 receives errata from its active exact-minor repositories without
@@ -22,6 +24,8 @@ This file gives a short, release-oriented view of what changed between versions.
   upgrades so first boot does not advance the reviewed guest release.
 - Exact-version image finalization and smoke tests now verify the persistent DNF
   release pin as well as the guest version.
+- Fully prepared clone smoke tests now require Python 3, matching downstream
+  Ansible requirements.
 - Forced replacement now waits until image preparation and exact-version checks
   succeed before destroying an existing template.
 

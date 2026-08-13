@@ -7,6 +7,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-13
+
 ### Added
 
 - Added exact-minor Rocky 10.0 and Rocky 10.2 template examples and image
@@ -17,12 +19,20 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   committed image profiles.
 - Added local tests for exact-version command construction and profile
   validation.
+- Added a live smoke-test check that fully prepared clones provide Python 3 for
+  downstream Ansible automation.
+- `make verify` now runs the local contract tests in addition to shell syntax
+  checks, and `make shellcheck` includes test scripts.
 
 ### Changed
 
 - Smoke tests now default to the private SSH transport config's key when no
   separate guest-test key is supplied; only its public key is injected into the
   temporary clone.
+- Explicit smoke-test public keys must match the selected private key, and SSH
+  wait timeouts preserve failed clones for console inspection.
+- Image preflights now verify pinned BaseOS and AppStream repository metadata
+  from both the workstation and the Proxmox node.
 - Documentation distinguishes the required Rocky 10.1 downstream baseline from
   the full set of runtime-validated Rocky 10 profiles.
 - Rocky 10.0 is documented as an archived migration-test source rather than a
