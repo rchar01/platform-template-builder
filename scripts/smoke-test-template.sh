@@ -338,7 +338,12 @@ ok "SSH login succeeded"
 info "Checking cloud-init and guest services"
 guest_cloud_init_wait "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS"
 guest_ssh_timeout "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS" "systemctl is-active '${SMOKE_TEST_SSH_SERVICE}'" >/dev/null
-ok "cloud-init and SSH service are healthy"
+if [[ "$GUEST_PREP_MODE" == "full" ]]; then
+  guest_ssh "python3 -c 'import sys; assert sys.version_info.major == 3'"
+  ok "cloud-init, SSH service, and Python 3 are healthy"
+else
+  ok "cloud-init and SSH service are healthy"
+fi
 
 if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then
   expected_version=$(ptb_shell_quote "$IMAGE_EXPECTED_VERSION_ID")

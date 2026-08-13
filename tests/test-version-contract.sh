@@ -104,6 +104,11 @@ smoke_test=$(<"$ROOT_DIR/scripts/smoke-test-template.sh")
 # shellcheck disable=SC2016
 cloud_init_gate='guest_cloud_init_wait "$SMOKE_TEST_CLOUDINIT_TIMEOUT_SECONDS"'
 # shellcheck disable=SC2016
+python_gate='if [[ "$GUEST_PREP_MODE" == "full" ]]; then'
+python_assertion="guest_ssh \"python3 -c 'import sys; assert sys.version_info.major == 3'\""
+[[ "$smoke_test" == *"$cloud_init_gate"*"$python_gate"*"$python_assertion"* ]] ||
+  fail "Python 3 gate must run after cloud-init completion for full preparation"
+# shellcheck disable=SC2016
 version_gate='if [[ -n "${IMAGE_EXPECTED_VERSION_ID:-}" ]]; then'
 [[ "$smoke_test" == *"$cloud_init_gate"*"$version_gate"* ]] ||
   fail "guest version gate must run after cloud-init completion"
